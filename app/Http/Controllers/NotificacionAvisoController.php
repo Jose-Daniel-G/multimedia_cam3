@@ -57,34 +57,28 @@ class NotificacionAvisoController extends Controller
     public function store(Request $request)
     {
         $archivoExcel = $request->input('file'); // ← Aquí lo recibes  $request->file('file');
-        Log::debug("Archivo recibido: " . json_encode($archivoExcel));
         $organismo = $this->organismo;
-        $folder = Str::snake($organismo->depe_nomb);
+        $folder = Str::snake($organismo->depe_nomb); //SIN USO
         $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
         $contenido = scandir($rutaCarpetaUsuario);
-        $archivoExcel = $this->esArchivoValido($contenido, $rutaCarpetaUsuario);
-
-        $fileExcel = reset($archivoExcel); // JDGO ADDED
-        if (empty($fileExcel)) {
+        $validacion = $this->esArchivoValido($contenido, $rutaCarpetaUsuario);
+        if (empty($validacion)) {
             return redirect()->back()->with('error', 'Error: No se encontró ningún archivo CSV, XLSX o XLS en la carpeta.');
         }
-
-        $fileExcelNamefolder = pathinfo($fileExcel, PATHINFO_FILENAME);
+        $fileExcelNamefolder = pathinfo($archivoExcel, PATHINFO_FILENAME);
         $rutaCarpetaOrigen = $rutaCarpetaUsuario . '/' . $fileExcelNamefolder;
         // CAPETA ORIGEN DE PDFS
         if (!is_dir($rutaCarpetaOrigen)) {
             return response()->json(['error' => 'Error: No existe la carpeta de origen.']);
         }
-        $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
-
-        $contenido_pdf = scandir($rutaCarpetaOrigen);                                                   // Escanear contenido de la carpeta
-        Log::debug('rutaCarpetaOrigen: ' . $rutaCarpetaOrigen);
-
-        $archivosPdf = $this->esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                          // valida que los PDF esten registrados en csv, xlsx, xls
-
-        $extension = strtolower(pathinfo($fileExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
-        $resultado = $this->pdfsFaltantes($rutaArchivoExcel, $fileExcel, $archivosPdf);
-        $id_tipo_plantilla = Str::snake($resultado['id_plantilla']);                                              //NOMBRE PLANTILLA
+        $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $archivoExcel;
+        $contenido_pdf = scandir($rutaCarpetaOrigen);                                                      // Escanear contenido de la carpeta
+        $archivosPdf = $this->esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                             // valida que los PDF esten registrados en csv, xlsx, xls
+        $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
+        $resultado = $this->proccessFile($rutaArchivoExcel, $archivoExcel, $archivosPdf);
+        $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
+        $id_plantilla = Str::snake($id_plantilla);                                                    //NOMBRE PLANTILLA
+        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;      //CARPETA DESTINO PDFS 
 
         if (isset($resultado['error'])) {
             return redirect()->back()->with('error', $resultado['error']);
@@ -98,16 +92,15 @@ class NotificacionAvisoController extends Controller
             return redirect()->back()->with('error', 'Error: Faltan los siguientes PDFs: ' . implode(", ", $resultado['pdfsFaltantes']));
         }
 
-        $id_plantilla = $resultado['id_plantilla'];                                                          //ID PLANTILLA
-        Log::debug("store plantilla: " . $id_plantilla);
-        // $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;     //CARPETA DESTINO PDFS 
+
         try {
             DB::beginTransaction();
 
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
             Log::debug("id_plantilla:" . json_encode($resultado['id_plantilla']));
-            $evento = EventoAuditoria::create([
+
+            EventoAuditoria::create([
                 'id_publi_noti' => $publi_notificacion,
                 'idusuario' => auth()->id(),
                 'id_plantilla' => $resultado['id_plantilla'],
@@ -120,43 +113,32 @@ class NotificacionAvisoController extends Controller
                 ]),
                 'fecha_auditoria' => now(),
             ]);
-
-
-            // Obtener encabezados y quitar la primera fila
-            $headers = $resultado['headers'];
-            // $rows = array_slice($dataRaw, 4);
+            
+            $headers = $resultado['headers'];                                                           // Obtener encabezados 
             $rows = $resultado['rows'];
+
             // Convertir cada fila en array asociativo
             $data = array_map(function ($row) use ($headers) {
                 return array_combine($headers, $row);
             }, $rows);
 
-            log::debug("Data procesada: " . json_encode($data));
-
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');                     // Obtener el último valor usado en la columna id_notificacion
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
 
             // Lanzar Job de importación masiva
-            $importador =  ImportarNotificaciones::dispatch(
+            ImportarNotificaciones::dispatch(
                 $data,
                 $publi_notificacion, // publi_notificacion
-                $id_tipo_plantilla,
+                $id_plantilla,
                 $organismo->id,
-                1, // estado_auditoria_id
+                1,                  // estado_auditoria_id
                 $rutaArchivoExcel,
                 $this->usuario->id,
                 $this->username,
                 $extension
             );
-            if (!empty($importador->errores)) {
-                DB::rollBack();                                                           // Revertir todo si algo falla
-                if (isset($eventoId)) {                                                   // $evento->delete();
-                    DB::table('evento_auditoria')->where('id_evento', $eventoId)->delete(); // Definir $ultimoId tomando el máximo ID de la tabla
-                }
-                return redirect()->back()->withErrors($importador->errores);
-            }
 
-            // Crear carpeta destino si no existe
+            // // Crear carpeta destino si no existe
             // if (!is_dir($destino)) {
             //     mkdir($destino, 0777, true);
             // }
@@ -168,61 +150,25 @@ class NotificacionAvisoController extends Controller
 
             // // Mover Excel/CSV
             // if (file_exists($rutaArchivoExcel)) {
-            //     rename($rutaArchivoExcel, "{$destino}/{$fileExcel}");
+            //     rename($rutaArchivoExcel, "{$destino}/{$archivoExcel}");
             // }
 
             DB::commit();
-            return back()->with(['success' => 'Archivo en proceso de importación.', 'info' => $id_tipo_plantilla]);
+            return back()->with(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
         } catch (Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error al iniciar la importación: ' . $e->getMessage());
         }
     }
-
-    function files_plantilla()
+    public function proccessFile($rutaArchivoSheet, $archivoExcel, $archivosPdf)
     {
-        $files = Storage::disk('public')->files("users/{$this->username}");
-        // Obtener solo archivos Excel (xlsx, xls, csv)
-        $excelRawFiles = collect($files)
-            ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
-            ->map(fn($file) => basename($file))
-            ->toArray();
-
-        $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
-        $excelFiles = [];
-
-        foreach ($excelRawFiles as $fileExcel) {
-            $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
-
-            if (!file_exists($rutaArchivoExcel)) continue;
-
-            $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
-
-            if (isset($dataRaw[0][1])) {
-                $id_plantilla = substr($dataRaw[0][1], 0, 1);
-                $n_registros = $dataRaw[1][1];
-                $n_pdfs = $dataRaw[2][1];
-
-                $excelFiles[] = [
-                    'file' => $fileExcel,
-                    'n_registros' => $n_registros,
-                    'n_pdfs' => $n_pdfs,
-                    'id_plantilla' => $id_plantilla
-                ];
-            }
-        }
-
-        return $excelFiles;
-    }
-    public function pdfsFaltantes($rutaArchivoSheet, $archivoExcel, $archivosPdf)
-    {
-        $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));
         $sheet_file = Excel::toArray([], $rutaArchivoSheet)[0] ?? [];
 
+        Log::debug("sheet_file: " . json_encode($sheet_file));
         if (empty($sheet_file) || !isset($sheet_file[0][1])) {
             return ['error' => '❌ El archivo está vacío o mal formado.'];
         }
-        
+        log::debug("sheet_file: " . json_encode($sheet_file[0][1]));
         $id_plantilla = substr($sheet_file[0][1], 0, 1);
         $columnaNombre = in_array($id_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
         Log::debug("file: $rutaArchivoSheet");
@@ -262,6 +208,42 @@ class NotificacionAvisoController extends Controller
             'rows' => $rows,
         ];
     }
+    function files_plantilla()
+    {
+        $files = Storage::disk('public')->files("users/{$this->username}");
+        // Obtener solo archivos Excel (xlsx, xls, csv)
+        $excelRawFiles = collect($files)
+            ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
+            ->map(fn($file) => basename($file))
+            ->toArray();
+
+        $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
+        $excelFiles = [];
+
+        foreach ($excelRawFiles as $fileExcel) {
+            $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
+
+            if (!file_exists($rutaArchivoExcel)) continue;
+
+            $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
+
+            if (isset($dataRaw[0][1])) {
+                $id_plantilla = substr($dataRaw[0][1], 0, 1);
+                $n_registros = $dataRaw[1][1];
+                $n_pdfs = $dataRaw[2][1];
+
+                $excelFiles[] = [
+                    'file' => $fileExcel,
+                    'n_registros' => $n_registros,
+                    'n_pdfs' => $n_pdfs,
+                    'id_plantilla' => $id_plantilla
+                ];
+            }
+        }
+
+        return $excelFiles;
+    }
+
     public function show()
     {
         //
