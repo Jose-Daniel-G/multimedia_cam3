@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use League\Csv\Reader;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Illuminate\Support\Facades\Validator;
 
 class NotificacionAvisoController extends Controller
 {
@@ -95,53 +96,134 @@ class NotificacionAvisoController extends Controller
 
         try {
             DB::beginTransaction();
-
+        
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
-
+        
+            $id_plantilla = $resultado['id_plantilla'];
+            // $organismo = auth()->user()->organismo;
+        
             EventoAuditoria::create([
                 'id_publi_noti' => $publi_notificacion,
                 'idusuario' => auth()->id(),
-                'id_plantilla' => $resultado['id_plantilla'],
-                'cont_registros' => 0, // se actualizará luego si se desea
+                'id_plantilla' => $id_plantilla,
+                'cont_registros' => 0,
                 'estado_auditoria' => 'E',
                 'datos_adicionales' => json_encode([
-                    'organismo_id' => auth()->user()->organismo_id,
+                    'organismo_id' => $organismo->id,
                     'archivo_cargado' => true,
-                    'tipo_plantilla' => $resultado['id_plantilla']
+                    'tipo_plantilla' => $id_plantilla
                 ]),
                 'fecha_auditoria' => now(),
             ]);
-            
-            $headers = $resultado['headers'];                                                           // Obtener encabezados 
+        
+            $headers = $resultado['headers'];
             $rows = $resultado['rows'];
-
-            // Convertir cada fila en array asociativo
+        
             $data = array_map(function ($row) use ($headers) {
                 return array_combine($headers, $row);
             }, $rows);
-
-            $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');                     // Obtener el último valor usado en la columna id_notificacion
+        
+            $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
-
-            // Lanzar Job de importación masiva
+        
+            $errores = [];
+        
+            foreach ($data as $index => $row) {
+                $rules = [
+                    'cedula_identificacion' => ['required', 'regex:/^[0-9]+$/'],
+                    'fecha_publicacion' => ['required', 'date_format:Y-m-d'],
+                    'fecha_desfijacion' => ['required', 'date_format:Y-m-d'],
+                ];
+        
+                if (in_array($id_plantilla, [3])) {
+                    $dias = 5;
+                    $erroresConversion = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], $dias);
+        
+                    if (!empty($erroresConversion)) {
+                        $errores[$index + 1] = $erroresConversion;
+                    }
+                } else {
+                    if (!empty($row['fecha_publicacion']) && !empty($row['fecha_desfijacion'])) {
+                        $fecha_publicacion = Carbon::parse($row['fecha_publicacion']);
+                        $fecha_esperada = $fecha_publicacion->copy()->addWeekdays(5);
+                        $fecha_desfijacion = Carbon::parse($row['fecha_desfijacion']);
+        
+                        if (!$fecha_desfijacion->equalTo($fecha_esperada)) {
+                            $errores[$index + 1][] = "La fecha de desfijación debe ser 5 días hábiles después de la publicación.";
+                        }
+                    }
+        
+                    $validator = Validator::make($row, $rules);
+                    if ($validator->fails()) {
+                        $errores[$index + 1] = array_merge($errores[$index + 1] ?? [], $validator->errors()->all());
+                    }
+                }
+            }
+        
+            if (!empty($errores)) {
+                return response()->json(['errores' => $errores], 422);
+            }
+        
             ImportarNotificaciones::dispatch(
                 $data,
-                $publi_notificacion, // publi_notificacion
+                $publi_notificacion,
                 $id_plantilla,
                 $organismo->id,
-                1,                  // estado_auditoria_id
+                1,
                 $rutaArchivoExcel,
-                $this->usuario->id,
-                $this->username,
+                auth()->id(),
+                auth()->user()->username,
                 $extension
             );
-
+        
             DB::commit();
-            return  response()->json(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
+            return response()->json(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
+        
         } catch (Exception $e) {
             DB::rollBack();
-            return response()->json('error', 'Error al iniciar la importación: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al iniciar la importación: ' . $e->getMessage()], 500);
+        }
+        
+    }
+    private function conversionDateExcelDay($fechaPublicacion, $fechaDesfijacion, $diasEsperados = 5)
+    {
+        try {
+            $fechaPublicacion = $this->parseFechaExcel($fechaPublicacion);
+            $fechaDesfijacion = $this->parseFechaExcel($fechaDesfijacion);
+    
+            if ($fechaDesfijacion->diffInDays($fechaPublicacion) !== $diasEsperados) {
+                Log::warning("La diferencia entre {$fechaPublicacion->toDateString()} y {$fechaDesfijacion->toDateString()} no es de {$diasEsperados} días.");
+                return ["La diferencia entre fechas no es de {$diasEsperados} días."];
+            }
+    
+            return []; // Sin errores
+        } catch (\Exception $e) {
+            Log::error("Error al convertir fechas: " . $e->getMessage());
+            return ["Error al procesar fechas: " . $e->getMessage()];
+        }
+    }
+    
+    private function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $mesesEsperados = 1)
+    {
+        try {
+            $fechaPublicacion = $this->parseFechaExcel($fecha_publicacion);
+            $fechaDesfijacion = $this->parseFechaExcel($fecha_desfijacion);
+    
+            $fechaEsperada = $fechaPublicacion->copy()->addMonths($mesesEsperados);
+            
+            if (!$fechaDesfijacion->isSameDay($fechaEsperada)) {
+                Log::warning("La fecha de desfijación esperada es {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
+                return null;
+            }
+    
+            return [
+                'fecha_publicacion' => $fechaPublicacion,
+                'fecha_desfijacion' => $fechaDesfijacion,
+            ];
+        } catch (\Exception $e) {
+            Log::error("Error al convertir fechas: " . $e->getMessage());
+            return null;
         }
     }
     public function proccessFile($rutaArchivoSheet, $archivoExcel, $archivosPdf)
@@ -232,7 +314,16 @@ class NotificacionAvisoController extends Controller
     {
         //
     }
-
+    private function parseFechaExcel($fecha)
+    {
+        try {
+            return is_numeric($fecha)
+                ? Carbon::instance(Date::excelToDateTimeObject($fecha))
+                : Carbon::parse($fecha);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
 
     public function edit(NotificacionAviso $file)
     {

@@ -119,7 +119,23 @@
                             });
                             console.log(data);
                         })
-                        .catch(error => {
+                        .catch(async error => {
+                            // let errorMessage = "Ocurrió un error inesperado.";
+                            let errorMessage = "Ocurrió un error inesperado.";
+
+                            try {
+                                const responseText = await error.message;
+                                const parsedError = JSON.parse(responseText);
+                                if (parsedError.error) {
+                                    if (Array.isArray(parsedError.error)) {
+                                        errorMessage = parsedError.error.join(", ");
+                                    } else if (typeof parsedError.error === 'string') {
+                                        errorMessage = parsedError.error;
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("No se pudo parsear el error como JSON:", e);
+                            }
 
                             Swal.fire({
                                 title: 'Error',
@@ -128,6 +144,7 @@
                             });
                             console.error(error);
                         });
+
                 });
             });
         });

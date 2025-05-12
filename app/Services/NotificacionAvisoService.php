@@ -134,7 +134,8 @@ class NotificacionAvisoService
     
             if ($fechaDesfijacion->diffInDays($fechaPublicacion) !== $diasEsperados) {
                 Log::warning("La diferencia entre {$fechaPublicacion->toDateString()} y {$fechaDesfijacion->toDateString()} no es de {$diasEsperados} días.");
-                return null;
+                throw new \Exception("Diferencia de fechas inválida (se espera {$diasEsperados} días).");
+                // return null;
             }
     
             return [
