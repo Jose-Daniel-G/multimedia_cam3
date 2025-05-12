@@ -121,7 +121,7 @@
                         })
                         .catch(async error => {
                             // let errorMessage = "Ocurrió un error inesperado.";
-                            let errorMessage = "Ocurrió un error inesperado.";
+                            errorMessage = error.message;
 
                             try {
                                 const responseText = await error.message;

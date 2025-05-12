@@ -30,28 +30,21 @@ class NotificacionAvisoService
 
     public function coactivoPersuasivo(array $row, string $extension, string $publi_notificacion)
     {
-        $validator = Validator::make($row, [
-            'nombre_ciudadano'       => 'required|string|max:255',
-            'cedula_identificacion'  => 'required|string|max:50',
-            'fecha_publicacion'      => 'required',
-            'fecha_desfijacion'      => 'required',
-            'tipo_impuesto'          => 'required|integer',
-        ]);
-    
+        // $validator = Validator::make($row, [
+        //     'tipo_impuesto'          => 'required|integer',
+        // ]);
+
         if ($validator->fails()) {
-            // Detener ejecución y generar un mensaje de alerta
-            $errors = $validator->errors()->all();
-            Log::warning('Fila inválida en Coactivo/Persuasivo: ' . json_encode($errors));
-            throw new ValidationException($validator); // Lanza excepción si los datos no son válidos
+            Log::warning('Fila inválida en Coactivo/Persuasivo: ' . json_encode($validator->errors()->all()));
+            return;
         }
-    
-        $meses = 1;
-        $fechas = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], $meses);
-        // if (!$fechas) {
-        //     Log::warning("Diferencia de fechas inválida (se espera ".$meses." mes) en fila: " . json_encode($row));
-        //     throw new \Exception('Las fechas no son válidas.'); // Detiene el proceso si las fechas no son correctas
-        // }
-    
+
+        $fechas = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
+        if (!$fechas) {
+            Log::warning("Diferencia de fechas inválida (se espera 1 mes) en fila: " . json_encode($row));
+            return;
+        }
+
         try {
             NotificacionAviso::create([
                 'publi_notificacion'       => $publi_notificacion,
@@ -72,34 +65,21 @@ class NotificacionAvisoService
             ]);
         } catch (\Exception $e) {
             Log::error('Error al guardar Notificación Coactiva: ' . $e->getMessage());
-            throw $e; // Lanza la excepción para manejar el error en otro lugar si es necesario
         }
     }
-    
+
     public function liquidacion(array $row, string $extension, string $publi_notificacion)
     {
-        $validator = Validator::make($row, [
-            'nombre_ciudadano'       => 'required|string|max:255',
-            'cedula_identificacion'  => 'required|string|max:50',
-            'fecha_publicacion'      => 'required',
-            'fecha_desfijacion'      => 'required',
-        ]);
+
     
-        if ($validator->fails()) {
-            // Detener ejecución y generar un mensaje de alerta
-            $errors = $validator->errors()->all();
-            Log::warning('Fila inválida en Liquidación: ' . json_encode($errors));
-            throw new ValidationException($validator); // Lanza excepción si los datos no son válidos
-        }
-    
-        $dias = 5;
-        $fechas = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], $dias);
-        Log::info('Fechas convertidas: ' . json_encode($fechas));
-        // if (!$fechas) {
-        //     Log::warning("Diferencia de fechas inválida (se espera ".$dias." días) en fila: " . json_encode($row));
-        //     throw new \Exception('Las fechas no son válidas.'); // Detiene el proceso si las fechas no son correctas
+        // if ($validator->fails()) {
+        //     Log::warning('Fila inválida en Liquidación: ' . json_encode($validator->errors()->all()));
+        //     return;
         // }
-    
+
+        $fechas = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
+        if (!$fechas) return;
+
         try {
             NotificacionAviso::create([
                 'publi_notificacion'       => $publi_notificacion,
@@ -121,54 +101,38 @@ class NotificacionAvisoService
             ]);
         } catch (\Exception $e) {
             Log::error('Error al guardar Liquidación: ' . $e->getMessage());
-            throw $e; // Lanza la excepción para manejar el error en otro lugar si es necesario
         }
     }
-    
 
-    private function conversionDateExcelDay($fechaPublicacion, $fechaDesfijacion, $diasEsperados = 5)
+    private function conversionDateExcelDay($fecha_publicacion, $fecha_desfijacion, $dias)
     {
         try {
-            $fechaPublicacion = $this->parseFechaExcel($fechaPublicacion);
-            $fechaDesfijacion = $this->parseFechaExcel($fechaDesfijacion);
-    
-            if ($fechaDesfijacion->diffInDays($fechaPublicacion) !== $diasEsperados) {
-                Log::warning("La diferencia entre {$fechaPublicacion->toDateString()} y {$fechaDesfijacion->toDateString()} no es de {$diasEsperados} días.");
-                throw new \Exception("Diferencia de fechas inválida (se espera {$diasEsperados} días).");
-                // return null;
-            }
-    
-            return [
-                'fecha_publicacion' => $fechaPublicacion,
-                'fecha_desfijacion' => $fechaDesfijacion,
-            ];
+            $f1 = $this->parseFechaExcel($fecha_publicacion);
+            $f2 = $this->parseFechaExcel($fecha_desfijacion);
+            // Log::debug("Comparando fechas: publicación={$f1->toDateString()} / desfijación={$f2->toDateString()}");
+            return $f2->equalTo($f1->copy()->addDays($dias))
+                ? ['fecha_publicacion' => $f1, 'fecha_desfijacion' => $f2]
+                : null;
         } catch (\Exception $e) {
-            Log::error("Error al convertir fechas: " . $e->getMessage());
             return null;
         }
     }
-    private function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $mesesEsperados = 1)
+
+    private function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $meses)
     {
         try {
-            $fechaPublicacion = $this->parseFechaExcel($fecha_publicacion);
-            $fechaDesfijacion = $this->parseFechaExcel($fecha_desfijacion);
-    
-            $fechaEsperada = $fechaPublicacion->copy()->addMonths($mesesEsperados);
-            
-            if (!$fechaDesfijacion->isSameDay($fechaEsperada)) {
-                Log::warning("La fecha de desfijación esperada es {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
-                return null;
-            }
-    
-            return [
-                'fecha_publicacion' => $fechaPublicacion,
-                'fecha_desfijacion' => $fechaDesfijacion,
-            ];
+            $f1 = $this->parseFechaExcel($fecha_publicacion);
+            $f2 = $this->parseFechaExcel($fecha_desfijacion);
+            // Log::debug("Comparando fechas: publicación={$f1->toDateString()} / desfijación={$f2->toDateString()}");
+
+            return $f2->equalTo($f1->copy()->addMonths($meses))
+                ? ['fecha_publicacion' => $f1, 'fecha_desfijacion' => $f2]
+                : null;
         } catch (\Exception $e) {
-            Log::error("Error al convertir fechas: " . $e->getMessage());
             return null;
         }
     }
+
     private function parseFechaExcel($fecha)
     {
         try {
