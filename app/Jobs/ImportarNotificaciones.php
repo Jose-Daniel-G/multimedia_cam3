@@ -62,27 +62,14 @@ class ImportarNotificaciones implements ShouldQueue
     
             Log::info('Servicio NotificacionAvisoService creado con éxito');
     
-            // Revisamos si los datos son los esperados
-            Log::info('Datos a procesar:', $this->datos);
-    
             foreach ($this->datos as $index => $row) {
-                // Log para verificar el contenido de cada fila
-                Log::info('Contenido de la fila en índice ' . $index, ['row' => $row]);
-    
                 // Comprobar si la fila está vacía
                 if (empty($row) || !is_array($row) || count(array_filter($row)) === 0) {
                     // Log para filas vacías
                     Log::info('Fila vacía detectada en índice real ' . $index);
                     continue; // Saltar filas vacías
                 }
-    
-                Log::info('Procesando fila', [
-                    'index' => $index,
-                    'row' => $row,
-                    'extension' => $extension,
-                    'publi_notificacion' => $this->publi_notificacion
-                ]);
-    
+                // Log::info('Procesando fila', ['index' => $index,'row' => $row,'extension' => $extension,'publi_notificacion' => $this->publi_notificacion]);
                 // Procesar fila con el servicio
                 $service->procesarFila($row, $extension, $this->publi_notificacion);
             }

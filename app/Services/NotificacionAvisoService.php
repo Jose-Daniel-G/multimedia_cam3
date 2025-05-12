@@ -88,7 +88,7 @@ class NotificacionAvisoService
         try {
             $f1 = $this->parseFechaExcel($fecha_publicacion);
             $f2 = $this->parseFechaExcel($fecha_desfijacion);
-            Log::debug("Comparando fechas: publicación={$f1->toDateString()} / desfijación={$f2->toDateString()}");
+            // Log::debug("Comparando fechas: publicación={$f1->toDateString()} / desfijación={$f2->toDateString()}");
             return $f2->equalTo($f1->copy()->addDays($dias))
                 ? ['fecha_publicacion' => $f1, 'fecha_desfijacion' => $f2]
                 : null;
