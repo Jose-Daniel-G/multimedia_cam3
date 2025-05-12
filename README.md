@@ -124,3 +124,4 @@ https://leocaseiro.com.br/jquery-plugin-string-to-slug/
 php artisan vendor:publish
 php -S 127.0.0.1:8000 -t public
 php artisan users:update
+git remote get-url origin
