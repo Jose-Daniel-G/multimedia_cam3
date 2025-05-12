@@ -84,15 +84,6 @@ class NotificacionAvisoController extends Controller
         $extension = strtolower(pathinfo($fileExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
         $resultado = $this->pdfsFaltantes($rutaArchivoExcel, $fileExcel, $archivosPdf);
         $id_tipo_plantilla = Str::snake($resultado['id_plantilla']);                                              //NOMBRE PLANTILLA
-        
-        // $id_tipo_plantilla = 3;
-        // $area = TipoPlantilla::find($id_tipo_plantilla);
-        // $area_snake = Str::snake($area->nombre_plantilla);
-        // $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $area_snake . "/" . $this->username;
-        // $columnaNombre = in_array($id_tipo_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
-        // if (count($archivoExcel) > 1) {
-        //     return redirect()->back()->with('error', 'Error: Solo debe haber un archivo CSV, XLSX o XLS en la carpeta.');
-        // }
 
         if (isset($resultado['error'])) {
             return redirect()->back()->with('error', $resultado['error']);
@@ -110,7 +101,7 @@ class NotificacionAvisoController extends Controller
 
         $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
         Log::debug("store plantilla: " . $id_plantilla);
-        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;     //CARPETA DESTINO PDFS 
+        // $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;     //CARPETA DESTINO PDFS 
         try {
             DB::beginTransaction();
 
@@ -142,7 +133,7 @@ class NotificacionAvisoController extends Controller
             $data = array_map(function ($row) use ($headers) {
                 return array_combine($headers, $row);
             }, $rows);
-            
+
             log::debug("Data procesada: " . json_encode($data));
             $data = array_map(function ($row) {
                 // Convertir campos numéricos que vienen como string a enteros
@@ -181,19 +172,28 @@ class NotificacionAvisoController extends Controller
 
                 return $row;
             }, $data);
+            $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');                     // Obtener el último valor usado en la columna id_notificacion
+            $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
 
             // Lanzar Job de importación masiva
-            ImportarNotificaciones::dispatch(
+            $importador =  ImportarNotificaciones::dispatch(
                 $data,
+                $publi_notificacion, // publi_notificacion
                 $id_tipo_plantilla,
                 $organismo->id,
                 1, // estado_auditoria_id
                 $rutaArchivoExcel,
                 $this->usuario->id,
                 $this->username,
-                $extension,
-                1
+                $extension
             );
+            if (!empty($importador->errores)) {
+                DB::rollBack();                                                           // Revertir todo si algo falla
+                if (isset($eventoId)) {                                                   // $evento->delete();
+                    DB::table('evento_auditoria')->where('id_evento', $eventoId)->delete(); // Definir $ultimoId tomando el máximo ID de la tabla
+                }
+                return redirect()->back()->withErrors($importador->errores);
+            }
 
             // Crear carpeta destino si no existe
             // if (!is_dir($destino)) {
@@ -275,48 +275,7 @@ class NotificacionAvisoController extends Controller
     {
         //
     }
-    function getFiles($files)
-    {
-        $excelFiles = collect($files)->filter(function ($file) {
-            $extension = pathinfo($file, PATHINFO_EXTENSION);
-            return in_array($extension, ['csv', 'xlsx', 'xls']);
-        })->map(fn($file) => basename($file))->values()->toArray();
 
-        $path = storage_path("app/public/{$excelFiles}");
-        $extension = pathinfo($path, PATHINFO_EXTENSION);
-        if ($extension === 'csv') {
-            $csv = Reader::createFromPath($path, 'r');
-            $csv->setHeaderOffset(0);
-            $records = iterator_to_array($csv->getRecords());
-        } else {
-            $spreadsheet = IOFactory::load($path);
-            $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-            $headers = array_shift($rows);
-            $records = array_map(fn($row) => array_combine($headers, $row), $rows);
-        }
-        $records = array_filter($records, function ($record) {
-            // Filtra los registros que no tienen datos nulos en todos sus campos
-            return !empty(array_filter($record, function ($value) {
-                return !is_null($value) && $value !== '';
-            }));
-        });
-        $csvCount = count($records);
-
-        // dd(['records'=>$records, 'csvCount'=>$csvCount]);
-        try {
-            $pdfFiles = collect($files)
-                ->filter(fn($file) => pathinfo($file, PATHINFO_EXTENSION) === 'pdf')
-                ->map(fn($file) => basename($file))
-                ->toArray();
-            $pdfCount = count($pdfFiles);
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error al leer la cantidad de archivos PDF.');
-        }
-        $sheet = 1;
-        // dd(['dataFile'=>$dataFile,'csvCount'=>$csvCount,'pdfFiles'=>$pdfFiles,'records'=>$records]);
-
-        return view('admin.import.index', compact('organismo', 'csvCount', 'pdfFiles', 'pdfCount', 'tipo_plantilla', 'sheet'));
-    }
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
     {
         $archivosValidos = array_filter($contenido, function ($archivo) use ($rutaCarpetaUsuario) {

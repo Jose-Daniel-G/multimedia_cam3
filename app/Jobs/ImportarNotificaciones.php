@@ -22,7 +22,7 @@ class ImportarNotificaciones implements ShouldQueue
     protected $fk_idusuario;
     protected $publi_notificacion;
 
-    public function __construct($datos, $tipoPlantillaId, $organismoId, $estadoAuditoriaId, $rutaArchivoExel, $fk_idusuario, $publi_notificacion)
+    public function __construct($datos, $publi_notificacion, $tipoPlantillaId, $organismoId, $estadoAuditoriaId, $rutaArchivoExel, $fk_idusuario)
     {
         $this->datos = $datos;
         $this->tipoPlantillaId = (int) $tipoPlantillaId;
