@@ -57,6 +57,7 @@ class NotificacionAvisoController extends Controller
     public function store(Request $request)
     {
         $archivoExcel = $request->input('file'); // ← Aquí lo recibes  $request->file('file');
+        Log::debug("Archivo recibido: " . json_encode($archivoExcel));
         $organismo = $this->organismo;
         $folder = Str::snake($organismo->depe_nomb);
         $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
@@ -97,9 +98,7 @@ class NotificacionAvisoController extends Controller
             return redirect()->back()->with('error', 'Error: Faltan los siguientes PDFs: ' . implode(", ", $resultado['pdfsFaltantes']));
         }
 
-        $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0];                                                // Libreria que lee la hoja de calculo
-
-        $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
+        $id_plantilla = $resultado['id_plantilla'];                                                          //ID PLANTILLA
         Log::debug("store plantilla: " . $id_plantilla);
         // $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;     //CARPETA DESTINO PDFS 
         try {
@@ -124,54 +123,16 @@ class NotificacionAvisoController extends Controller
 
 
             // Obtener encabezados y quitar la primera fila
-            $headers = array_map('trim', $dataRaw[3]);
+            $headers = $resultado['headers'];
             // $rows = array_slice($dataRaw, 4);
-            $rows = array_filter(array_slice($dataRaw, 4), fn($fila)
-            => is_array($fila) && count(array_filter($fila)) > 0); //Validar que las filas no estén vacías antes de procesarlas.
-
+            $rows = $resultado['rows'];
             // Convertir cada fila en array asociativo
             $data = array_map(function ($row) use ($headers) {
                 return array_combine($headers, $row);
             }, $rows);
 
             log::debug("Data procesada: " . json_encode($data));
-            $data = array_map(function ($row) {
-                // Convertir campos numéricos que vienen como string a enteros
-                if (isset($row['id_predio'])) {
-                    $row['id_predio'] = (int)ltrim($row['id_predio'], '0');
-                }
 
-                if (isset($row['cedula_identificacion'])) {
-                    $row['cedula_identificacion'] = (int)ltrim($row['cedula_identificacion'], '0');
-                }
-
-                if (isset($row['liquidacion'])) {
-                    $row['liquidacion'] = (int)ltrim($row['liquidacion'], '0');
-                }
-
-                // Convertir fechas
-                if (isset($row['fecha_publicacion']) && is_numeric($row['fecha_publicacion'])) {
-                    try {
-                        $row['fecha_publicacion'] = \Carbon\Carbon::instance(
-                            Date::excelToDateTimeObject($row['fecha_publicacion'])
-                        )->format('n/j/Y');
-                    } catch (\Exception $e) {
-                        $row['fecha_publicacion'] = null;
-                    }
-                }
-
-                if (isset($row['fecha_desfijacion']) && is_numeric($row['fecha_desfijacion'])) {
-                    try {
-                        $row['fecha_desfijacion'] = \Carbon\Carbon::instance(
-                            Date::excelToDateTimeObject($row['fecha_desfijacion'])
-                        )->format('n/j/Y');
-                    } catch (\Exception $e) {
-                        $row['fecha_desfijacion'] = null;
-                    }
-                }
-
-                return $row;
-            }, $data);
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');                     // Obtener el último valor usado en la columna id_notificacion
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
 
@@ -253,6 +214,54 @@ class NotificacionAvisoController extends Controller
 
         return $excelFiles;
     }
+    public function pdfsFaltantes($rutaArchivoSheet, $archivoExcel, $archivosPdf)
+    {
+        $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));
+        $sheet_file = Excel::toArray([], $rutaArchivoSheet)[0] ?? [];
+
+        if (empty($sheet_file) || !isset($sheet_file[0][1])) {
+            return ['error' => '❌ El archivo está vacío o mal formado.'];
+        }
+        
+        $id_plantilla = substr($sheet_file[0][1], 0, 1);
+        $columnaNombre = in_array($id_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
+        Log::debug("file: $rutaArchivoSheet");
+        Log::debug("Plantilla detectada: $id_plantilla");
+
+        if (!isset($sheet_file[3])) {
+            return ['error' => '❌ No se encontró la fila de headers (fila 4) en la hoja.'];
+        }
+        $headers = array_map('trim', $sheet_file[3]);
+        // $datos = array_slice($sheet_file, 4);
+        $rows = array_filter(array_slice($sheet_file, 4), fn($fila)
+        => is_array($fila) && count(array_filter($fila)) > 0); //Validar que las filas no estén vacías antes de procesarlas.
+        //    Log::debug("Datos procesados: ".json_encode($rows));
+
+        $indiceColumna = array_search($columnaNombre, $headers);
+
+        $nombresValidos = array_values(array_filter(
+            array_map(function ($fila) use ($indiceColumna) {
+                return isset($fila[$indiceColumna]) ? strtolower(trim($fila[$indiceColumna])) : '';
+            }, $rows),
+            fn($h) => $h !== ''
+        ));
+
+
+        $archivosPdf = array_map(function ($archivo) {
+            return preg_replace('/(\.pdf)+$/i', '', $archivo);
+        }, $archivosPdf);
+
+        $pdfsFaltantes = array_filter($nombresValidos, fn($nombre) => !in_array($nombre, $archivosPdf));
+        $pdfNoEncontrados = array_filter($archivosPdf, fn($pdf) => !in_array($pdf, $nombresValidos));
+
+        return [
+            'id_plantilla' => $id_plantilla,
+            'pdfsFaltantes' => $pdfsFaltantes,
+            'pdfNoEncontrados' => $pdfNoEncontrados,
+            'headers' => $headers,
+            'rows' => $rows,
+        ];
+    }
     public function show()
     {
         //
@@ -299,51 +308,7 @@ class NotificacionAvisoController extends Controller
         return $archivosPdf;
     }
 
-    public function pdfsFaltantes($rutaArchivoSheet, $archivoExcel, $archivosPdf)
-    {
-        $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));
-        $sheet_file = Excel::toArray([], $rutaArchivoSheet)[0] ?? [];
 
-        if (empty($sheet_file) || !isset($sheet_file[0][1])) {
-            return ['error' => '❌ El archivo está vacío o mal formado.'];
-        }
-        $id_plantilla = substr($sheet_file[0][1], 0, 1);
-        $columnaNombre = in_array($id_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
-        // Log::debug("Plantilla detectada: $id_plantilla");
-
-        if (!isset($sheet_file[3])) {
-            return ['error' => '❌ No se encontró la fila de headers (fila 4) en la hoja.'];
-        }
-        $headers = array_map('trim', $sheet_file[3]);
-        // $datos = array_slice($sheet_file, 4);
-        $rows = array_filter(array_slice($sheet_file, 4), fn($fila)
-        => is_array($fila) && count(array_filter($fila)) > 0); //Validar que las filas no estén vacías antes de procesarlas.
-        //    Log::debug("Datos procesados: ".json_encode($rows));
-
-        $indiceColumna = array_search($columnaNombre, $headers);
-
-        $nombresValidos = array_values(array_filter(
-            array_map(function ($fila) use ($indiceColumna) {
-                return isset($fila[$indiceColumna]) ? strtolower(trim($fila[$indiceColumna])) : '';
-            }, $rows),
-            fn($h) => $h !== ''
-        ));
-
-
-        $archivosPdf = array_map(function ($archivo) {
-            return preg_replace('/(\.pdf)+$/i', '', $archivo);
-        }, $archivosPdf);
-
-        $pdfsFaltantes = array_filter($nombresValidos, fn($nombre) => !in_array($nombre, $archivosPdf));
-        $pdfNoEncontrados = array_filter($archivosPdf, fn($pdf) => !in_array($pdf, $nombresValidos));
-
-        return [
-            'id_plantilla' => $id_plantilla,
-            'pdfsFaltantes' => $pdfsFaltantes,
-            'pdfNoEncontrados' => $pdfNoEncontrados,
-            'rows' => $rows,
-        ];
-    }
     function normalizarFilasExcel($encabezados, $data)
     {
         if (empty($data)) {
