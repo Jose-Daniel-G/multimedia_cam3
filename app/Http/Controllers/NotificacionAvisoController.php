@@ -39,7 +39,8 @@ class NotificacionAvisoController extends Controller
         });
     }
 
-    public function index() {
+    public function index()
+    {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
         $excelCount = count($excelFiles);
@@ -55,51 +56,67 @@ class NotificacionAvisoController extends Controller
 
     public function store(Request $request)
     {
-        $id_tipo_plantilla = 3;
+        $archivoExcel = $request->input('file'); // ← Aquí lo recibes  $request->file('file');
         $organismo = $this->organismo;
-        $area = TipoPlantilla::find($id_tipo_plantilla);
         $folder = Str::snake($organismo->depe_nomb);
-        $area_snake = Str::snake($area->nombre_plantilla);
         $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
-        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $area_snake . "/" . $this->username;
-    
-        $columnaNombre = in_array($id_tipo_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
         $contenido = scandir($rutaCarpetaUsuario);
         $archivoExcel = $this->esArchivoValido($contenido, $rutaCarpetaUsuario);
-    
-        if (empty($archivoExcel)) {
+
+        $fileExcel = reset($archivoExcel); // JDGO ADDED
+        if (empty($fileExcel)) {
             return redirect()->back()->with('error', 'Error: No se encontró ningún archivo CSV, XLSX o XLS en la carpeta.');
         }
-    
-        if (count($archivoExcel) > 1) {
-            return redirect()->back()->with('error', 'Error: Solo debe haber un archivo CSV, XLSX o XLS en la carpeta.');
+
+        $fileExcelNamefolder = pathinfo($fileExcel, PATHINFO_FILENAME);
+        $rutaCarpetaOrigen = $rutaCarpetaUsuario . '/' . $fileExcelNamefolder;
+        // CAPETA ORIGEN DE PDFS
+        if (!is_dir($rutaCarpetaOrigen)) {
+            return response()->json(['error' => 'Error: No existe la carpeta de origen.']);
         }
-    
-        $archivosPdf = $this->esPDFValido($contenido, $rutaCarpetaUsuario);
-    
-        $fileExcel = reset($archivoExcel);
-        $extension = strtolower(pathinfo($fileExcel, PATHINFO_EXTENSION));
         $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
-        $resultado = $this->pdfsFaltantes($rutaArchivoExcel, $fileExcel, $archivosPdf, $columnaNombre);
-    
+
+        $contenido_pdf = scandir($rutaCarpetaOrigen);                                                   // Escanear contenido de la carpeta
+        Log::debug('rutaCarpetaOrigen: ' . $rutaCarpetaOrigen);
+
+        $archivosPdf = $this->esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                          // valida que los PDF esten registrados en csv, xlsx, xls
+
+        $extension = strtolower(pathinfo($fileExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
+        $resultado = $this->pdfsFaltantes($rutaArchivoExcel, $fileExcel, $archivosPdf);
+        $id_tipo_plantilla = Str::snake($resultado['id_plantilla']);                                              //NOMBRE PLANTILLA
+        
+        // $id_tipo_plantilla = 3;
+        // $area = TipoPlantilla::find($id_tipo_plantilla);
+        // $area_snake = Str::snake($area->nombre_plantilla);
+        // $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $area_snake . "/" . $this->username;
+        // $columnaNombre = in_array($id_tipo_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
+        // if (count($archivoExcel) > 1) {
+        //     return redirect()->back()->with('error', 'Error: Solo debe haber un archivo CSV, XLSX o XLS en la carpeta.');
+        // }
+
         if (isset($resultado['error'])) {
             return redirect()->back()->with('error', $resultado['error']);
         }
-    
+
         if (!empty($resultado['pdfNoEncontrados'])) {
             return redirect()->back()->with('error', 'Error: Los siguientes PDFs no están en el CSV: ' . implode(", ", $resultado['pdfNoEncontrados']));
         }
-    
+
         if (!empty($resultado['pdfsFaltantes'])) {
             return redirect()->back()->with('error', 'Error: Faltan los siguientes PDFs: ' . implode(", ", $resultado['pdfsFaltantes']));
         }
-    
+
+        $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0];                                                // Libreria que lee la hoja de calculo
+
+        $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
+        Log::debug("store plantilla: " . $id_plantilla);
+        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;     //CARPETA DESTINO PDFS 
         try {
             DB::beginTransaction();
-    
+
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
-            Log::debug("id_plantilla:".json_encode($resultado['id_plantilla']));
+            Log::debug("id_plantilla:" . json_encode($resultado['id_plantilla']));
             $evento = EventoAuditoria::create([
                 'id_publi_noti' => $publi_notificacion,
                 'idusuario' => auth()->id(),
@@ -114,34 +131,33 @@ class NotificacionAvisoController extends Controller
                 'fecha_auditoria' => now(),
             ]);
 
-            // Leer datos desde el Excel
-            $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0];
 
             // Obtener encabezados y quitar la primera fila
             $headers = array_map('trim', $dataRaw[3]);
             // $rows = array_slice($dataRaw, 4);
-            $rows = array_filter(array_slice($dataRaw, 4), fn($fila) 
+            $rows = array_filter(array_slice($dataRaw, 4), fn($fila)
             => is_array($fila) && count(array_filter($fila)) > 0); //Validar que las filas no estén vacías antes de procesarlas.
 
             // Convertir cada fila en array asociativo
             $data = array_map(function ($row) use ($headers) {
                 return array_combine($headers, $row);
             }, $rows);
-            log::debug("Data procesada: ".json_encode($data));
+            
+            log::debug("Data procesada: " . json_encode($data));
             $data = array_map(function ($row) {
                 // Convertir campos numéricos que vienen como string a enteros
                 if (isset($row['id_predio'])) {
                     $row['id_predio'] = (int)ltrim($row['id_predio'], '0');
                 }
-            
+
                 if (isset($row['cedula_identificacion'])) {
                     $row['cedula_identificacion'] = (int)ltrim($row['cedula_identificacion'], '0');
                 }
-            
+
                 if (isset($row['liquidacion'])) {
                     $row['liquidacion'] = (int)ltrim($row['liquidacion'], '0');
                 }
-            
+
                 // Convertir fechas
                 if (isset($row['fecha_publicacion']) && is_numeric($row['fecha_publicacion'])) {
                     try {
@@ -152,7 +168,7 @@ class NotificacionAvisoController extends Controller
                         $row['fecha_publicacion'] = null;
                     }
                 }
-            
+
                 if (isset($row['fecha_desfijacion']) && is_numeric($row['fecha_desfijacion'])) {
                     try {
                         $row['fecha_desfijacion'] = \Carbon\Carbon::instance(
@@ -162,13 +178,10 @@ class NotificacionAvisoController extends Controller
                         $row['fecha_desfijacion'] = null;
                     }
                 }
-            
+
                 return $row;
             }, $data);
-            
 
-            // dd($data);
-            // $publi_notificacion
             // Lanzar Job de importación masiva
             ImportarNotificaciones::dispatch(
                 $data,
@@ -181,22 +194,22 @@ class NotificacionAvisoController extends Controller
                 $extension,
                 1
             );
-    
+
             // Crear carpeta destino si no existe
             // if (!is_dir($destino)) {
             //     mkdir($destino, 0777, true);
             // }
-    
+
             // // Mover PDFs
             // foreach ($archivosPdf as $pdf) {
             //     rename("{$rutaCarpetaUsuario}/{$pdf}", "{$destino}/{$pdf}");
             // }
-    
+
             // // Mover Excel/CSV
             // if (file_exists($rutaArchivoExcel)) {
             //     rename($rutaArchivoExcel, "{$destino}/{$fileExcel}");
             // }
-    
+
             DB::commit();
             return back()->with(['success' => 'Archivo en proceso de importación.', 'info' => $id_tipo_plantilla]);
         } catch (Exception $e) {
@@ -204,7 +217,7 @@ class NotificacionAvisoController extends Controller
             return back()->with('error', 'Error al iniciar la importación: ' . $e->getMessage());
         }
     }
-    
+
     function files_plantilla()
     {
         $files = Storage::disk('public')->files("users/{$this->username}");
@@ -228,7 +241,7 @@ class NotificacionAvisoController extends Controller
                 $id_plantilla = substr($dataRaw[0][1], 0, 1);
                 $n_registros = $dataRaw[1][1];
                 $n_pdfs = $dataRaw[2][1];
-                
+
                 $excelFiles[] = [
                     'file' => $fileExcel,
                     'n_registros' => $n_registros,
@@ -344,9 +357,9 @@ class NotificacionAvisoController extends Controller
         }
         $headers = array_map('trim', $sheet_file[3]);
         // $datos = array_slice($sheet_file, 4);
-        $rows = array_filter(array_slice($sheet_file, 4), fn($fila) 
-               => is_array($fila) && count(array_filter($fila)) > 0); //Validar que las filas no estén vacías antes de procesarlas.
-            //    Log::debug("Datos procesados: ".json_encode($rows));
+        $rows = array_filter(array_slice($sheet_file, 4), fn($fila)
+        => is_array($fila) && count(array_filter($fila)) > 0); //Validar que las filas no estén vacías antes de procesarlas.
+        //    Log::debug("Datos procesados: ".json_encode($rows));
 
         $indiceColumna = array_search($columnaNombre, $headers);
 
@@ -356,7 +369,7 @@ class NotificacionAvisoController extends Controller
             }, $rows),
             fn($h) => $h !== ''
         ));
-        
+
 
         $archivosPdf = array_map(function ($archivo) {
             return preg_replace('/(\.pdf)+$/i', '', $archivo);
