@@ -112,14 +112,22 @@
                             return JSON.parse(text); // parsear manualmente
                         })
                         .then(data => {
-                            alert('Procesado correctamente');
+                            Swal.fire({
+                                title: 'Éxito',
+                                text: data.success,
+                                icon: 'success'
+                            });
                             console.log(data);
                         })
                         .catch(error => {
-                            alert(error.message);
+
+                            Swal.fire({
+                                title: 'Error',
+                                text: errorMessage,
+                                icon: 'error'
+                            });
                             console.error(error);
                         });
-
                 });
             });
         });

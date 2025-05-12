@@ -81,15 +81,15 @@ class NotificacionAvisoController extends Controller
         $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;      //CARPETA DESTINO PDFS 
 
         if (isset($resultado['error'])) {
-            return redirect()->back()->with('error', $resultado['error']);
+            return response()->json(['error', $resultado['error']]);
         }
 
         if (!empty($resultado['pdfNoEncontrados'])) {
-            return redirect()->back()->with('error', 'Error: Los siguientes PDFs no están en el CSV: ' . implode(", ", $resultado['pdfNoEncontrados']));
+            return response()->json(['error', 'Error: Los siguientes PDFs no están en el CSV: ' . implode(", ", $resultado['pdfNoEncontrados'])]);
         }
 
         if (!empty($resultado['pdfsFaltantes'])) {
-            return redirect()->back()->with('error', 'Error: Faltan los siguientes PDFs: ' . implode(", ", $resultado['pdfsFaltantes']));
+            return response()->json(['error', 'Error: Faltan los siguientes PDFs: ' . implode(", ", $resultado['pdfsFaltantes'])]);
         }
 
 
@@ -98,7 +98,6 @@ class NotificacionAvisoController extends Controller
 
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
-            Log::debug("id_plantilla:" . json_encode($resultado['id_plantilla']));
 
             EventoAuditoria::create([
                 'id_publi_noti' => $publi_notificacion,
@@ -138,26 +137,11 @@ class NotificacionAvisoController extends Controller
                 $extension
             );
 
-            // // Crear carpeta destino si no existe
-            // if (!is_dir($destino)) {
-            //     mkdir($destino, 0777, true);
-            // }
-
-            // // Mover PDFs
-            // foreach ($archivosPdf as $pdf) {
-            //     rename("{$rutaCarpetaUsuario}/{$pdf}", "{$destino}/{$pdf}");
-            // }
-
-            // // Mover Excel/CSV
-            // if (file_exists($rutaArchivoExcel)) {
-            //     rename($rutaArchivoExcel, "{$destino}/{$archivoExcel}");
-            // }
-
             DB::commit();
-            return back()->with(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
+            return  response()->json(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
         } catch (Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Error al iniciar la importación: ' . $e->getMessage());
+            return response()->json('error', 'Error al iniciar la importación: ' . $e->getMessage());
         }
     }
     public function proccessFile($rutaArchivoSheet, $archivoExcel, $archivosPdf)
