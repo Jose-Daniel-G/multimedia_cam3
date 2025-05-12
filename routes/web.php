@@ -20,5 +20,9 @@ use App\Http\Controllers\PostController;
         });
 
 
-        Route::get('/vista-principal', [NotificacionAvisoController::class, 'index'])->name('main.index');
-        Route::post('/vista-principal', [NotificacionAvisoController::class, 'store'])->name('main.store');
+        // Route::get('/vista-principal', [NotificacionAvisoController::class, 'index'])->name('main.index');
+        // Route::post('/vista-principal', [NotificacionAvisoController::class, 'store'])->name('main.store');
+        Route::get('/notificacion', [NotificacionAvisoController::class, 'index'])->name('main.index');
+        Route::get('/notificacion/create', [NotificacionAvisoController::class, 'create'])->name('main.create');
+        Route::post('/notificacion/store', [NotificacionAvisoController::class, 'store'])->name('main.store');
+        // Route::get('/notificacion/edit', [NotificacionAvisoController::class, 'edit'])->name('main.edit');

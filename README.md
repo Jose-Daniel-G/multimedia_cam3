@@ -40,6 +40,10 @@ php artisan config:clear
 php artisan view:clear
 php artisan route:clear
 php artisan view:clear
+
+php artisan queue:flush
+php artisan queue:restart
+php artisan queue:clear
  ```
 ###### INSTALL LANGUAGE
  ```
@@ -118,7 +122,5 @@ php artisan db:seed --class=WorldSeeder
 https://leocaseiro.com.br/jquery-plugin-string-to-slug/
 
 php artisan vendor:publish
-
-touch app/Services/UserService.php
-touch app/Services/ProcesadorPlantillaService.php
-touch app/Services/ValidadorCsvService.php
+php -S 127.0.0.1:8000 -t public
+php artisan users:update

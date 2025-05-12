@@ -39,29 +39,18 @@ class NotificacionAvisoController extends Controller
         });
     }
 
-    public function index()
-    {
-        $files = Storage::disk('public')->files("users/{$this->username}");
-        $tipo_plantilla = TipoPlantilla::all();
+    public function index() {
         $organismo = $this->organismo;
-        // Obtener solo archivos Excel
-        // $this->getFiles($files);
-        $sheet = 0;
-        $excelFiles = collect($files)->filter(function ($file) {
-            $extension = pathinfo($file, PATHINFO_EXTENSION);
-            return in_array($extension, ['csv', 'xlsx', 'xls']);
-        })->map(fn($file) => basename($file))->values()->toArray();
-        $pdfFiles = collect($files)
-            ->filter(fn($file) => pathinfo($file, PATHINFO_EXTENSION) === 'pdf')
-            ->map(fn($file) => basename($file))
-            ->toArray();
-        if($pdfFiles){
-            $sheet = 1;
-        }
-        $pdfCount = count($pdfFiles);
-        
-
-        return view('admin.import.index', compact('organismo', 'tipo_plantilla', 'sheet', 'excelFiles', 'pdfCount','pdfFiles'));
+        $excelFiles = $this->files_plantilla();
+        $excelCount = count($excelFiles);
+        return view('admin.import.index', compact('organismo', 'excelFiles', 'excelCount'));
+    }
+    public function create()
+    {
+        $organismo = $this->organismo;
+        $excelFiles = $this->files_plantilla();
+        $excelCount = count($excelFiles);
+        return view('admin.import.create', compact('organismo', 'excelFiles', 'excelCount'));
     }
 
     public function store(Request $request)
@@ -216,7 +205,41 @@ class NotificacionAvisoController extends Controller
         }
     }
     
+    function files_plantilla()
+    {
+        $files = Storage::disk('public')->files("users/{$this->username}");
+        // Obtener solo archivos Excel (xlsx, xls, csv)
+        $excelRawFiles = collect($files)
+            ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
+            ->map(fn($file) => basename($file))
+            ->toArray();
 
+        $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
+        $excelFiles = [];
+
+        foreach ($excelRawFiles as $fileExcel) {
+            $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
+
+            if (!file_exists($rutaArchivoExcel)) continue;
+
+            $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
+
+            if (isset($dataRaw[0][1])) {
+                $id_plantilla = substr($dataRaw[0][1], 0, 1);
+                $n_registros = $dataRaw[1][1];
+                $n_pdfs = $dataRaw[2][1];
+                
+                $excelFiles[] = [
+                    'file' => $fileExcel,
+                    'n_registros' => $n_registros,
+                    'n_pdfs' => $n_pdfs,
+                    'id_plantilla' => $id_plantilla
+                ];
+            }
+        }
+
+        return $excelFiles;
+    }
     public function show()
     {
         //
