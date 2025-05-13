@@ -184,7 +184,30 @@ class NotificacionAvisoController extends Controller
                     'errors' => $errores
                 ], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
             }
+            $data = array_map(function ($row) {
+                // Convertir fechas
+                if (isset($row['fecha_publicacion']) && is_numeric($row['fecha_publicacion'])) {
+                    try {
+                        $row['fecha_publicacion'] = \Carbon\Carbon::instance(
+                            Date::excelToDateTimeObject($row['fecha_publicacion'])
+                        )->format('n/j/Y');
+                    } catch (\Exception $e) {
+                        $row['fecha_publicacion'] = null;
+                    }
+                }
 
+                if (isset($row['fecha_desfijacion']) && is_numeric($row['fecha_desfijacion'])) {
+                    try {
+                        $row['fecha_desfijacion'] = \Carbon\Carbon::instance(
+                            Date::excelToDateTimeObject($row['fecha_desfijacion'])
+                        )->format('n/j/Y');
+                    } catch (\Exception $e) {
+                        $row['fecha_desfijacion'] = null;
+                    }
+                }
+
+                return $row;
+            }, $data);
             ImportarNotificaciones::dispatch(
                 $data,
                 $publi_notificacion,
