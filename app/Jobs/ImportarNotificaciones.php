@@ -74,7 +74,7 @@ class ImportarNotificaciones implements ShouldQueue
                 $service->procesarFila($row, $extension, $this->publi_notificacion);
             }
         } catch (\Exception $e) {
-            Log::error('Error en el Job ImportarNotificaciones: ' .$fk_idusuario.' / '. $e->getMessage());
+            Log::error('Error en el Job ImportarNotificaciones:  '. $e->getMessage());
         }
     }
     

@@ -121,8 +121,8 @@ class NotificacionAvisoService
     private function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $meses)
     {
         try {
-            $f1 = $this->parseFechaExcel($fecha_publicacion);
-            $f2 = $this->parseFechaExcel($fecha_desfijacion);
+            $f1 = Carbon::parse($fecha_publicacion);
+            $f2 = Carbon::parse($fecha_desfijacion);
             // Log::debug("Comparando fechas: publicación={$f1->toDateString()} / desfijación={$f2->toDateString()}");
 
             return $f2->equalTo($f1->copy()->addMonths($meses))

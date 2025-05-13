@@ -146,10 +146,10 @@ class NotificacionAvisoController extends Controller
                         'liquidacion' => ['nullable', 'regex:/^[a-zA-Z0-9]+$/'], // Sin caracteres especiales ni puntos
                         'objeto_contrato' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
                         'id_predio' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        'num_predial' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        'liquidacion' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        'periodo' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        'archivo' => ['required'], // Solo números, sin puntos
+                        // 'num_predial' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
+                        // 'liquidacion' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
+                        // 'periodo' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
+                        // 'archivo' => ['required'], // Solo números, sin puntos
                     ]);
 
                     $dias = 5;
@@ -160,7 +160,7 @@ class NotificacionAvisoController extends Controller
                     }
                 } else {
                     $rules = array_merge($rules, [
-                        'ano' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
+                        'ano'           => ['required', 'regex:/^[0-9]+$/'],// Solo números, sin puntos
                         'tipo_impuesto' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
 
                     ]);
