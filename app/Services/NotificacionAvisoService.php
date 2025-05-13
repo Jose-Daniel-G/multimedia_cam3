@@ -48,7 +48,7 @@ class NotificacionAvisoService
         $fecha_publicacion = Carbon::parse($row['fecha_publicacion'])->format('Y-m-d');
         $fecha_desfijacion = Carbon::parse($row['fecha_desfijacion'])->format('Y-m-d');
         Log::debug("Fechas convertidas: publicación={$fecha_publicacion} / desfijación={$fecha_desfijacion}");
-        Log::debug("Fila procesada: " . json_encode($row));
+        // Log::debug("Fila procesada: " . json_encode($row));
         try {
             NotificacionAviso::create([
                 'publi_notificacion'       => $publi_notificacion,

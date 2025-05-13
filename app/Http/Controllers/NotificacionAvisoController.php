@@ -54,18 +54,18 @@ class NotificacionAvisoController extends Controller
     {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
-    
+
         // Verificar si existen archivos bloqueados
         if (isset($excelFiles['abierto']) && $excelFiles['abierto']) {
             $archivosBloqueados = implode(', ', $excelFiles['archivosBloqueados']);
             return redirect()->route('admin.home')->withErrors(["Los siguientes archivos están abiertos: {$archivosBloqueados} por favor cerrarlo, para continuar."]);
         }
-    
+
         $excelCount = count($excelFiles);
-    
+
         return view('admin.import.create', compact('organismo', 'excelFiles', 'excelCount'));
     }
-    
+
 
     public function store(Request $request)
     {
@@ -89,10 +89,10 @@ class NotificacionAvisoController extends Controller
         $contenido_pdf = scandir($rutaCarpetaOrigen);                                                      // Escanear contenido de la carpeta
         $archivosPdf = $this->esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                             // valida que los PDF esten registrados en csv, xlsx, xls
         $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
-        $resultado = $this->proccessFile($rutaArchivoExcel, $archivoExcel, $archivosPdf);
+        $resultado = $this->proccessFile($rutaArchivoExcel, $archivosPdf);
         $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
-        $id_plantilla = Str::snake($id_plantilla);                                                    //NOMBRE PLANTILLA
-        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;      //CARPETA DESTINO PDFS 
+        $id_plantilla = Str::snake($id_plantilla);                                                         //NOMBRE PLANTILLA
+        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;                            //CARPETA DESTINO PDFS 
 
         if (isset($resultado['error'])) {
             return response()->json(['error', $resultado['error']]);
@@ -112,26 +112,9 @@ class NotificacionAvisoController extends Controller
 
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
-
             $id_plantilla = $resultado['id_plantilla'];
-            // $organismo = auth()->user()->organismo;
-
-            EventoAuditoria::create([
-                'id_publi_noti' => $publi_notificacion,
-                'idusuario' => auth()->id(),
-                'id_plantilla' => $id_plantilla,
-                'cont_registros' => 0,
-                'estado_auditoria' => 'E',
-                'datos_adicionales' => json_encode([
-                    'organismo_id' => $organismo->id,
-                    'archivo_cargado' => true,
-                    'tipo_plantilla' => $id_plantilla
-                ]),
-                'fecha_auditoria' => now(),
-            ]);
-
-            $headers = $resultado['headers'];
-            $rows = $resultado['rows'];
+            $headers      = $resultado['headers'];
+            $rows         = $resultado['rows'];
 
             $data = array_map(function ($row) use ($headers) {
                 return array_combine($headers, $row);
@@ -141,7 +124,9 @@ class NotificacionAvisoController extends Controller
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
 
             $errores = [];
-            
+
+            $data = $this->convertirFechasEnArray($data);
+
             foreach ($data as $index => $row) {
                 $rules = [
                     'nombre_ciudadano' => ['required', 'string', 'max:255'],
@@ -152,6 +137,7 @@ class NotificacionAvisoController extends Controller
             
                 if (in_array($id_plantilla, [1, 2])) {
                     $row['tipo_impuesto'] = trim($row['tipo_impuesto']);
+            
                     $rules = array_merge($rules, [
                         'tipo_impuesto' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_acto_tramite' => ['required', 'regex:/^[0-9]+$/', 'integer'],
@@ -177,37 +163,24 @@ class NotificacionAvisoController extends Controller
                     }
                 }
             }
-            
+
             if (!empty($errores)) {
-                return response()->json([
-                    'title' => 'Errores encontrados',
-                    'errors' => $errores
-                ], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
+                return response()->json(['title' => 'Errores encontrados','errors' => $errores], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
             }
-            $data = array_map(function ($row) {
-                // Convertir fechas
-                if (isset($row['fecha_publicacion']) && is_numeric($row['fecha_publicacion'])) {
-                    try {
-                        $row['fecha_publicacion'] = \Carbon\Carbon::instance(
-                            Date::excelToDateTimeObject($row['fecha_publicacion'])
-                        )->format('n/j/Y');
-                    } catch (\Exception $e) {
-                        $row['fecha_publicacion'] = null;
-                    }
-                }
-
-                if (isset($row['fecha_desfijacion']) && is_numeric($row['fecha_desfijacion'])) {
-                    try {
-                        $row['fecha_desfijacion'] = \Carbon\Carbon::instance(
-                            Date::excelToDateTimeObject($row['fecha_desfijacion'])
-                        )->format('n/j/Y');
-                    } catch (\Exception $e) {
-                        $row['fecha_desfijacion'] = null;
-                    }
-                }
-
-                return $row;
-            }, $data);
+            EventoAuditoria::create([
+                'id_publi_noti' => $publi_notificacion,
+                'idusuario' => auth()->id(),
+                'id_plantilla' => $id_plantilla,
+                'cont_registros' => 0,
+                'estado_auditoria' => 'E',
+                'datos_adicionales' => json_encode([
+                    'organismo_id' => $organismo->id,
+                    'archivo_cargado' => true,
+                    'tipo_plantilla' => $id_plantilla
+                ]),
+                'fecha_auditoria' => now(),
+            ]);
+            
             ImportarNotificaciones::dispatch(
                 $data,
                 $publi_notificacion,
@@ -239,9 +212,9 @@ class NotificacionAvisoController extends Controller
         }
     }
 
-    public function proccessFile($rutaArchivoSheet, $archivoExcel, $archivosPdf)
+    public function proccessFile($rutaArchivoExcel, $archivosPdf)
     {
-        $sheet_file = Excel::toArray([], $rutaArchivoSheet)[0] ?? [];
+        $sheet_file = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
 
         // Log::debug("sheet_file: " . json_encode($sheet_file));
         if (empty($sheet_file) || !isset($sheet_file[0][1])) {
@@ -250,7 +223,7 @@ class NotificacionAvisoController extends Controller
         log::debug("sheet_file: " . json_encode($sheet_file[0][1]));
         $id_plantilla = substr($sheet_file[0][1], 0, 1);
         $columnaNombre = in_array($id_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
-        Log::debug("file: $rutaArchivoSheet");
+        Log::debug("file: $rutaArchivoExcel");
         Log::debug("Plantilla detectada: $id_plantilla");
 
         if (!isset($sheet_file[3])) {
@@ -294,11 +267,11 @@ class NotificacionAvisoController extends Controller
             ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
             ->map(fn($file) => basename($file))
             ->toArray();
-    
+
         $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
         $excelFiles = [];
         $archivosBloqueados = [];
-    
+
         foreach ($excelRawFiles as $fileExcel) {
             $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
             $abierto = $this->estaBloqueado($rutaArchivoExcel); // chequeo por archivo
@@ -307,17 +280,17 @@ class NotificacionAvisoController extends Controller
                 $archivosBloqueados[] = $fileExcel;
                 break;
             } else {
-    
+
                 if (!file_exists($rutaArchivoExcel)) continue;
-    
+
                 $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
-        
+
                 if (isset($dataRaw[0][1])) {
                     $id_plantilla = substr($dataRaw[0][1], 0, 1);
                     $plantilla = TipoPlantilla::find($id_plantilla);
                     $n_registros = $dataRaw[1][1];
                     $n_pdfs = $dataRaw[2][1];
-        
+
                     $excelFiles[] = [
                         'file' => $fileExcel,
                         'n_registros' => $n_registros,
@@ -327,15 +300,30 @@ class NotificacionAvisoController extends Controller
                     ];
                 }
             }
-
         }
-    
+
         // Si hay archivos bloqueados, devolver la advertencia
         if (!empty($archivosBloqueados)) {
             return ['abierto' => true, 'archivosBloqueados' => $archivosBloqueados];
         }
-    
+
         return $excelFiles;
+    }
+
+    private function convertirFechasEnArray(array $data): array
+    {
+        return array_map(function ($row) {
+            foreach (['fecha_publicacion', 'fecha_desfijacion'] as $campo) {
+                if (isset($row[$campo]) && is_numeric($row[$campo])) {
+                    try {
+                        $row[$campo] = \Carbon\Carbon::instance(Date::excelToDateTimeObject($row[$campo]))->format('n/j/Y');
+                    } catch (\Exception $e) {
+                        $row[$campo] = null;
+                    }
+                }
+            }
+            return $row;
+        }, $data);
     }
     
 
@@ -408,7 +396,8 @@ class NotificacionAvisoController extends Controller
         }
     }
 
-    function edit(){
+    function edit()
+    {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
         $excelCount = count($excelFiles);
@@ -452,13 +441,12 @@ class NotificacionAvisoController extends Controller
     public function estaBloqueado($rutaArchivo)
     {
         $handle = @fopen($rutaArchivo, 'r+');
-    
+
         if ($handle === false) {
             return true; // No se puede abrir: probablemente está bloqueado o en uso
         }
-    
+
         fclose($handle);
         return false; // El archivo está libre
     }
-    
 }
