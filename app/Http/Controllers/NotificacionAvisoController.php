@@ -128,51 +128,55 @@ class NotificacionAvisoController extends Controller
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
 
             $errores = [];
-
+            
             foreach ($data as $index => $row) {
                 $rules = [
                     'nombre_ciudadano' => ['required', 'string', 'max:255'],
                     'cedula_identificacion' => ['required', 'regex:/^[0-9]+$/'],
-                    'fecha_publicacion' => ['required'],//, 'date_format:Y-m-d'
+                    'fecha_publicacion' => ['required'],
                     'fecha_desfijacion' => ['required'],
                 ];
-                $validator = Validator::make($row, $rules);
-                if ($validator->fails()) {
-                    $errores[$index + 1] = array_merge($errores[$index + 1] ?? [], $validator->errors()->all());
-                }
-                if (in_array($id_plantilla, [3])) {
-
+            
+                if (in_array($id_plantilla, [1, 2])) {
+                    $row['tipo_impuesto'] = trim($row['tipo_impuesto']);
                     $rules = array_merge($rules, [
-                        'liquidacion' => ['nullable', 'regex:/^[a-zA-Z0-9]+$/'], // Sin caracteres especiales ni puntos
-                        'objeto_contrato' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        'id_predio' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        // 'num_predial' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        // 'liquidacion' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        // 'periodo' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-                        // 'archivo' => ['required'], // Solo números, sin puntos
+                        'tipo_impuesto' => ['required', 'regex:/^[0-9]+$/', 'integer'],
+                        'tipo_acto_tramite' => ['required', 'regex:/^[0-9]+$/', 'integer'],
+                        'tipo_causa_devolucion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
+                        'tipo_estado_publicacion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                     ]);
-
-                    $dias = 5;
-                    $erroresConversion = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], $dias);
-
-                    if (!empty($erroresConversion)) {
-                        $errores[$index + 1] = $erroresConversion;
-                    }
                 } else {
                     $rules = array_merge($rules, [
-                        'ano'           => ['required', 'regex:/^[0-9]+$/'],// Solo números, sin puntos
-                        'tipo_impuesto' => ['required', 'regex:/^[0-9]+$/'], // Solo números, sin puntos
-
+                        'liquidacion' => ['nullable', 'regex:/^[a-zA-Z0-9]+$/'],
+                        'objeto_contrato' => ['required', 'regex:/^[0-9_]+$/'],
+                        'id_predio' => ['required', 'regex:/^[0-9]+$/'],
                     ]);
-                    
-                    $meses = 1;
-                    $erroresConversion = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], $meses);
-                    if (!empty($erroresConversion)) {
-                        $errores[$index + 1] = $erroresConversion;
+                }
+            
+                $validator = Validator::make($row, $rules);
+            
+                if ($validator->fails()) {
+                    foreach ($validator->errors()->all() as $mensaje) {
+                        if (!isset($errores[$mensaje])) {
+                            $errores[$mensaje] = 0;
+                        }
+                        $errores[$mensaje]++;
                     }
                 }
             }
+            
+            if (!empty($errores)) {
+                return response()->json([
+                    'title' => 'Errores encontrados',
+                    'errors' => $errores
+                ], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
+            }
+            
+            
+            
+            
 
+            // Si hay errores, retornar respuesta con los errores
             if (!empty($errores)) {
                 return response()->json(['error' => collect($errores)->flatten()->all()], 422);
             }
@@ -196,7 +200,7 @@ class NotificacionAvisoController extends Controller
             return response()->json(['error' => 'Error al iniciar la importación: ' . $e->getMessage()], 500);
         }
     }
- 
+
     public function proccessFile($rutaArchivoSheet, $archivoExcel, $archivosPdf)
     {
         $sheet_file = Excel::toArray([], $rutaArchivoSheet)[0] ?? [];
@@ -309,22 +313,36 @@ class NotificacionAvisoController extends Controller
             $fechaPublicacion = $this->parseFechaExcel($fecha_publicacion);
             $fechaDesfijacion = $this->parseFechaExcel($fecha_desfijacion);
 
+            // Calcular la fecha esperada sumando el número de meses
             $fechaEsperada = $fechaPublicacion->copy()->addMonths($mesesEsperados);
 
-            if (!$fechaDesfijacion->isSameDay($fechaEsperada)) {
-                Log::warning("La fecha de desfijación esperada es {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
+            // Registrar las fechas para depuración
+            Log::info("Fecha de publicación: {$fechaPublicacion->toDateString()}");
+            Log::info("Fecha de desfijación: {$fechaDesfijacion->toDateString()}");
+            Log::info("Fecha esperada de desfijación: {$fechaEsperada->toDateString()}");
+
+            // Comparar la fecha de desfijación, permitiendo un pequeño margen de diferencia
+            // Esto podría ser por ejemplo un rango de +- 3 días
+            $fechaMinimaDesfijacion = $fechaEsperada->copy()->subDays(3);  // 3 días antes
+            $fechaMaximaDesfijacion = $fechaEsperada->copy()->addDays(3);   // 3 días después
+
+            if ($fechaDesfijacion->lt($fechaMinimaDesfijacion) || $fechaDesfijacion->gt($fechaMaximaDesfijacion)) {
+                Log::warning("La fecha de desfijación debería estar entre {$fechaMinimaDesfijacion->toDateString()} y {$fechaMaximaDesfijacion->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
                 return null;
             }
 
-            return [
-                'fecha_publicacion' => $fechaPublicacion,
-                'fecha_desfijacion' => $fechaDesfijacion,
-            ];
+            return [];
+            // return [
+            //     'fecha_publicacion' => $fechaPublicacion->toDateString(),
+            //     'fecha_desfijacion' => $fechaDesfijacion->toDateString(),
+            // ];
         } catch (\Exception $e) {
             Log::error("Error al convertir fechas: " . $e->getMessage());
             return null;
         }
     }
+
+
     private function parseFechaExcel($fecha)
     {
         try {

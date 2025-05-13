@@ -94,56 +94,51 @@
                     const fileName = this.getAttribute('data-filename');
 
                     fetch('{{ route('main.store') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                file: fileName
-                            })
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            file: fileName
                         })
-                        .then(async response => {
-                            const text = await response.text();
-                            console.log("Respuesta cruda:", text);
-                            if (!response.ok) {
-                                throw new Error(text);
-                            }
-                            return JSON.parse(text); // parsear manualmente
-                        })
-                        .then(data => {
-                            Swal.fire({
-                                title: 'Éxito',
-                                text: data.success,
-                                icon: 'success'
-                            });
-                            console.log(data);
-                        })
-                        .catch(async error => {
-                            // let errorMessage = "Ocurrió un error inesperado.";
-                            errorMessage = error.message;
-
+                    })
+                    .then(async response => {
+                        const text = await response.text();
+                        console.log("Respuesta cruda:", text);
+                        if (!response.ok) {
                             try {
-                                const responseText = await error.message;
-                                const parsedError = JSON.parse(responseText);
-                                if (parsedError.error) {
-                                    if (Array.isArray(parsedError.error)) {
-                                        errorMessage = parsedError.error.join(", ");
-                                    } else if (typeof parsedError.error === 'string') {
-                                        errorMessage = parsedError.error;
-                                    }
+                                const errorData = JSON.parse(text);
+                                console.log("Datos del error parseados:", errorData);
+                                let errorMessage = '';
+                                if (errorData.errors) {
+                                    errorMessage = Object.keys(errorData.errors).map(key => key).join('<br>');
                                 }
+                                const errorTitle = errorData.title || 'Error'; // Usar el título del JSON o un título genérico
+                                return Promise.reject({ title: errorTitle, message: errorMessage });
                             } catch (e) {
-                                console.warn("No se pudo parsear el error como JSON:", e);
+                                console.error("Error al parsear JSON:", e);
+                                return Promise.reject({ title: 'Error', message: text || "Ocurrió un error inesperado." });
                             }
-
-                            Swal.fire({
-                                title: 'Error',
-                                text: errorMessage,
-                                icon: 'error'
-                            });
-                            console.error(error);
+                        }
+                        return JSON.parse(text);
+                    })
+                    .then(data => {
+                        Swal.fire({
+                            title: 'Éxito',
+                            text: data.success,
+                            icon: 'success'
                         });
+                        console.log(data);
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            title: error.title || 'Error', // Usar el título del objeto de error o un título genérico
+                            html: error.message,
+                            icon: 'error'
+                        });
+                        console.error(error);
+                    });
 
                 });
             });
