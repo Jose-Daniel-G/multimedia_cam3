@@ -79,7 +79,7 @@ class NotificacionAvisoController extends Controller
         $resultado = $this->proccessFile($rutaArchivoExcel, $archivoExcel, $archivosPdf);
         $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
         $id_plantilla = Str::snake($id_plantilla);                                                    //NOMBRE PLANTILLA
-        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $id_plantilla . "/" . $this->username;      //CARPETA DESTINO PDFS 
+        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;      //CARPETA DESTINO PDFS 
 
         if (isset($resultado['error'])) {
             return response()->json(['error', $resultado['error']]);
@@ -183,6 +183,17 @@ class NotificacionAvisoController extends Controller
                 auth()->user()->username,
                 $extension
             );
+
+            if (!is_dir($destino)) {
+                mkdir($destino, 0755, true);
+            }
+            Log::debug("Ruta de destino: $destino");
+            rename($rutaCarpetaOrigen, "{$destino}/{$fileExcelNamefolder}");
+
+            // Mover el archivo Excel o CSV a la carpeta de destino
+            if (isset($archivoExcel) && file_exists("{$rutaCarpetaUsuario}/{$archivoExcel}")) {
+                rename("{$rutaCarpetaUsuario}/{$archivoExcel}", "{$destino}/{$archivoExcel}");
+            }
 
             DB::commit();
             return response()->json(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
