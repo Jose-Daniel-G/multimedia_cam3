@@ -28,6 +28,7 @@ class NotificacionAvisoController extends Controller
     protected $organismo;
     protected $username;
     protected $baseDir;
+    protected $rutaCarpetaUsuario;
 
     public function __construct()
     {
@@ -36,6 +37,8 @@ class NotificacionAvisoController extends Controller
             $this->organismo = Organismo::find($this->usuario->organismo_id);
             $this->username = strtok($this->usuario->email, '@'); // forma más rápida
             $this->baseDir = storage_path('app/public');
+            $this->rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
+
             return $next($request);
         });
     }
@@ -51,28 +54,38 @@ class NotificacionAvisoController extends Controller
     {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
+    
+        // Verificar si existen archivos bloqueados
+        if (isset($excelFiles['abierto']) && $excelFiles['abierto']) {
+            $archivosBloqueados = implode(', ', $excelFiles['archivosBloqueados']);
+            return redirect()->route('admin.home')->withErrors(["Los siguientes archivos están abiertos: {$archivosBloqueados} por favor cerrarlo, para continuar."]);
+        }
+    
         $excelCount = count($excelFiles);
+    
         return view('admin.import.create', compact('organismo', 'excelFiles', 'excelCount'));
     }
+    
 
     public function store(Request $request)
     {
         $archivoExcel = $request->input('file'); // ← Aquí lo recibes  $request->file('file');
+
         $organismo = $this->organismo;
         $folder = Str::snake($organismo->depe_nomb); //SIN USO
-        $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
-        $contenido = scandir($rutaCarpetaUsuario);
-        $validacion = $this->esArchivoValido($contenido, $rutaCarpetaUsuario);
+        $contenido = scandir($this->rutaCarpetaUsuario);
+        $validacion = $this->esArchivoValido($contenido, $this->rutaCarpetaUsuario);
         if (empty($validacion)) {
             return redirect()->back()->with('error', 'Error: No se encontró ningún archivo CSV, XLSX o XLS en la carpeta.');
         }
         $fileExcelNamefolder = pathinfo($archivoExcel, PATHINFO_FILENAME);
-        $rutaCarpetaOrigen = $rutaCarpetaUsuario . '/' . $fileExcelNamefolder;
+        $rutaCarpetaOrigen = $this->rutaCarpetaUsuario . '/' . $fileExcelNamefolder;
         // CAPETA ORIGEN DE PDFS
         if (!is_dir($rutaCarpetaOrigen)) {
             return response()->json(['error' => 'Error: No existe la carpeta de origen.']);
         }
-        $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $archivoExcel;
+        $rutaArchivoExcel = $this->rutaCarpetaUsuario . '/' . $archivoExcel;
+
         $contenido_pdf = scandir($rutaCarpetaOrigen);                                                      // Escanear contenido de la carpeta
         $archivosPdf = $this->esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                             // valida que los PDF esten registrados en csv, xlsx, xls
         $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
@@ -187,13 +200,13 @@ class NotificacionAvisoController extends Controller
             if (!is_dir($destino)) {
                 mkdir($destino, 0755, true);
             }
-            Log::debug("Ruta de destino: $destino");
-            rename($rutaCarpetaOrigen, "{$destino}/{$fileExcelNamefolder}");
+            // Log::debug("Ruta de destino: $destino");
+            // rename($rutaCarpetaOrigen, "{$destino}/{$fileExcelNamefolder}");
 
-            // Mover el archivo Excel o CSV a la carpeta de destino
-            if (isset($archivoExcel) && file_exists("{$rutaCarpetaUsuario}/{$archivoExcel}")) {
-                rename("{$rutaCarpetaUsuario}/{$archivoExcel}", "{$destino}/{$archivoExcel}");
-            }
+            // // Mover el archivo Excel o CSV a la carpeta de destino
+            // if (isset($archivoExcel) && file_exists("{$rutaCarpetaUsuario}/{$archivoExcel}")) {
+            //     rename("{$rutaCarpetaUsuario}/{$archivoExcel}", "{$destino}/{$archivoExcel}");
+            // }
 
             DB::commit();
             return response()->json(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
@@ -254,38 +267,52 @@ class NotificacionAvisoController extends Controller
     function files_plantilla()
     {
         $files = Storage::disk('public')->files("users/{$this->username}");
-        // Obtener solo archivos Excel (xlsx, xls, csv)
         $excelRawFiles = collect($files)
             ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
             ->map(fn($file) => basename($file))
             ->toArray();
-
+    
         $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
         $excelFiles = [];
-
+        $archivosBloqueados = [];
+    
         foreach ($excelRawFiles as $fileExcel) {
             $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
-
-            if (!file_exists($rutaArchivoExcel)) continue;
-
-            $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
-
-            if (isset($dataRaw[0][1])) {
-                $id_plantilla = substr($dataRaw[0][1], 0, 1);
-                $n_registros = $dataRaw[1][1];
-                $n_pdfs = $dataRaw[2][1];
-
-                $excelFiles[] = [
-                    'file' => $fileExcel,
-                    'n_registros' => $n_registros,
-                    'n_pdfs' => $n_pdfs,
-                    'id_plantilla' => $id_plantilla
-                ];
+            $abierto = $this->estaBloqueado($rutaArchivoExcel); // chequeo por archivo
+            if ($abierto) {
+                Log::warning("El archivo {$fileExcel} está abierto o en uso.");
+                $archivosBloqueados[] = $fileExcel;
+                break;
+            } else {
+    
+                if (!file_exists($rutaArchivoExcel)) continue;
+    
+                $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
+        
+                if (isset($dataRaw[0][1])) {
+                    $id_plantilla = substr($dataRaw[0][1], 0, 1);
+                    $n_registros = $dataRaw[1][1];
+                    $n_pdfs = $dataRaw[2][1];
+        
+                    $excelFiles[] = [
+                        'file' => $fileExcel,
+                        'n_registros' => $n_registros,
+                        'n_pdfs' => $n_pdfs,
+                        'id_plantilla' => $id_plantilla
+                    ];
+                }
             }
-        }
 
+        }
+    
+        // Si hay archivos bloqueados, devolver la advertencia
+        if (!empty($archivosBloqueados)) {
+            return ['abierto' => true, 'archivosBloqueados' => $archivosBloqueados];
+        }
+    
         return $excelFiles;
     }
+    
 
     public function show()
     {
@@ -397,51 +424,16 @@ class NotificacionAvisoController extends Controller
 
         return $archivosPdf;
     }
-
-
-    function normalizarFilasExcel($encabezados, $data)
+    public function estaBloqueado($rutaArchivo)
     {
-        if (empty($data)) {
-            return redirect()->back()->with('error', 'Error: El archivo no contiene datos válidos.');
-        } //EL CSV ESTA VACIO
-
-        // Normalizar encabezados: quitar espacios y convertir a minúsculas
-        $encabezados = array_map(fn($h) => mb_strtolower(trim($h), 'UTF-8'), $encabezados);
-        // 1. Eliminar columnas completamente vacías (sin título y sin datos)
-        $columnas_no_vacias = array_filter($encabezados, function ($titulo, $i) use ($data) {
-            return !empty($titulo) || array_filter(array_column($data, $i));
-        }, ARRAY_FILTER_USE_BOTH);
-
-        // 2. Eliminar filas totalmente vacías
-        $data_filtrada = array_filter($data, function ($fila) {
-            return array_filter($fila); // Retorna true si al menos una celda tiene contenido
-        });
-
-        // 3. Procesar cada fila
-        $result = array_map(function ($fila) use ($columnas_no_vacias) {
-            $fila_filtrada = array_intersect_key($fila, $columnas_no_vacias);
-            $valores = array_values($fila_filtrada);
-            $claves = array_values($columnas_no_vacias);
-
-            // HORA_REG
-            $posHora = array_search('hora_reg', $claves);
-            if ($posHora !== false && isset($valores[$posHora]) && is_numeric($valores[$posHora])) {
-                $segundos = round($valores[$posHora] * 86400);
-                $valores[$posHora] = gmdate('H:i:s', $segundos);
-            }
-
-            // Fechas a convertir
-            $fechas = ['fec_act_tra', 'fec_reg', 'fecha_publicacion', 'fecha_desfijacion'];
-            foreach ($fechas as $fecha) {
-                $idx = array_search($fecha, $claves);
-                if ($idx !== false && isset($valores[$idx]) && is_numeric($valores[$idx])) {
-                    $valores[$idx] = Carbon::createFromDate(1900, 1, 1)->addDays($valores[$idx] - 2)->format('Y-m-d');
-                }
-            }
-
-            return array_combine($claves, $valores);
-        }, $data_filtrada);
-
-        return $result;
+        $handle = @fopen($rutaArchivo, 'r+');
+    
+        if ($handle === false) {
+            return true; // No se puede abrir: probablemente está bloqueado o en uso
+        }
+    
+        fclose($handle);
+        return false; // El archivo está libre
     }
+    
 }

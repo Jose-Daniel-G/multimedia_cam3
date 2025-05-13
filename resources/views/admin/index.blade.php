@@ -12,6 +12,17 @@
 @section('content')
     <div class="container-fluid mt-4 bg-white shadow p-4 rounded border">
 
+
+
+        @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
         <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded border">
             <!-- Avatar -->
             <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white fs-4 fw-bold"
@@ -151,20 +162,25 @@
 @stop
 
 @section('js')
+    @if (session('error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: `{!! addslashes(session('error')) !!}`,
+            });
+        </script>
+    @endif
 
+    @if ($errors->any())
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Errores de validación',
+                html: `{!! implode('<br>', $errors->all()) !!}`,
+            });
+        </script>
+    @endif
 @endsection
-{{-- <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
-        </h2>
-    </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
-                <x-welcome />
-            </div>
-        </div>
-    </div>
-</x-app-layout> --}}
+

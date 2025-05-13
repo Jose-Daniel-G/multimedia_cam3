@@ -1,9 +1,9 @@
     <?php
 
-use App\Http\Controllers\Admin\HomeController;
-use App\Http\Controllers\NotificacionAvisoController;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
+    use App\Http\Controllers\Admin\HomeController;
+    use App\Http\Controllers\NotificacionAvisoController;
+    use Illuminate\Support\Facades\Auth;
+    use Illuminate\Support\Facades\Route;
 
 
     // Route::get('/prueba', function () {return view('index-prueba');});
@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Route;
     Route::get('/', function () {
         return Auth::check() ? app(HomeController::class)->index() : view('auth.login');
     });
+    // routes/web.php
+    // Route::get('/admin', function () {return app(HomeController::class)->index();})->name('admin.index');
+
     // Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified'])
     Route::middleware(['auth:sanctum', config('jetstream.auth_session')])
         ->group(function () {
