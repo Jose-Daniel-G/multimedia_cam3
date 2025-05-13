@@ -144,12 +144,33 @@ class NotificacionAvisoController extends Controller
                         'tipo_causa_devolucion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_estado_publicacion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                     ]);
+            
+                    $erroresFecha = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
+                    if (!empty($erroresFecha)) {
+                        foreach ($erroresFecha as $mensaje) {
+                            if (!isset($errores[$mensaje])) {
+                                $errores[$mensaje] = 0;
+                            }
+                            $errores[$mensaje]++;
+                        }
+                    }
+            
                 } else {
                     $rules = array_merge($rules, [
                         'liquidacion' => ['nullable', 'regex:/^[a-zA-Z0-9]+$/'],
                         'objeto_contrato' => ['required', 'regex:/^[0-9_]+$/'],
                         'id_predio' => ['required', 'regex:/^[0-9]+$/'],
                     ]);
+            
+                    $erroresFecha = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
+                    if (!empty($erroresFecha)) {
+                        foreach ($erroresFecha as $mensaje) {
+                            if (!isset($errores[$mensaje])) {
+                                $errores[$mensaje] = 0;
+                            }
+                            $errores[$mensaje]++;
+                        }
+                    }
                 }
             
                 $validator = Validator::make($row, $rules);
@@ -163,6 +184,7 @@ class NotificacionAvisoController extends Controller
                     }
                 }
             }
+            
 
             if (!empty($errores)) {
                 return response()->json(['title' => 'Errores encontrados','errors' => $errores], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
@@ -180,7 +202,7 @@ class NotificacionAvisoController extends Controller
                 ]),
                 'fecha_auditoria' => now(),
             ]);
-            
+
             ImportarNotificaciones::dispatch(
                 $data,
                 $publi_notificacion,
@@ -339,7 +361,7 @@ class NotificacionAvisoController extends Controller
 
             if ($fechaDesfijacion->diffInDays($fechaPublicacion) !== $diasEsperados) {
                 Log::warning("La diferencia entre {$fechaPublicacion->toDateString()} y {$fechaDesfijacion->toDateString()} no es de {$diasEsperados} días.");
-                return ["La diferencia entre fechas no es de {$diasEsperados} días."];
+                return ["La desfijacion entre fechas no es de {$diasEsperados} días."];
             }
 
             return []; // Sin errores
@@ -370,7 +392,7 @@ class NotificacionAvisoController extends Controller
 
             if ($fechaDesfijacion->lt($fechaMinimaDesfijacion) || $fechaDesfijacion->gt($fechaMaximaDesfijacion)) {
                 Log::warning("La fecha de desfijación debería estar entre {$fechaMinimaDesfijacion->toDateString()} y {$fechaMaximaDesfijacion->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
-                return null;
+                return ["La fecha de desfijación debería estar entre {$fechaMinimaDesfijacion->toDateString()} y {$fechaMaximaDesfijacion->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}."];
             }
 
             return [];
@@ -380,7 +402,7 @@ class NotificacionAvisoController extends Controller
             // ];
         } catch (\Exception $e) {
             Log::error("Error al convertir fechas: " . $e->getMessage());
-            return null;
+            return ["Error al convertir fechas: " . $e->getMessage()];
         }
     }
 
