@@ -3,13 +3,13 @@
 @section('title', 'Cargar PDF')
 
 @section('content_header')
-    <h1>Por procesar</h1>
+    <h1>Procesados</h1>
 @stop
 
 @section('content')
     <div class="container mt-4">
         <h2 class="text-center"> {{ $organismo->depe_nomb }} </h2>
-        <h2 class="text-center">📂Por procesar</h2>
+        <h2 class="text-center">📂Procesados</h2>
 
         @if (session('success'))
             <div class="alert alert-success">
@@ -43,83 +43,74 @@
                                 <th>Nombre Archivo</th>
                                 <th>Numero de Registros</th>
                                 <th>Numero de Pdf asociados</th>
-                                <th>Seleccionar</th>
+                                <th>Progreso</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($excelFiles as $row)
+                            @foreach ($excelFiles as $index => $row)
                                 <tr>
                                     <td>{{ $row['id_plantilla'] }}</td> <!-- Mostrar el id_plantilla -->
                                     <td>{{ $row['file'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
                                     <td>{{ $row['n_registros'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
                                     <td>{{ $row['n_pdfs'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
                                     <td>
-                                        <input data-filename="{{ $row['file'] }}" class="btn btn-primary process-btn"
-                                            type="button" value="Procesar">
-                                    </td>
+                                        {{-- {{  $index }}% --}}
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" style="width:100%; border-radius: 0.5rem;" aria-valuenow="100%" aria-valuemin="0" aria-valuemax="100">
+                                                100% {{-- $row['progress']  --}}
+                                            </div>
+                                        </div>                                        
+                                    </td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                    <td> Publicado(cuando el archivo procesado con 0 errores) </td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                    <td> {{ date(now()) }} </td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                    <td> <i class="fa-solid fa-trash text-danger" id="delete" aria-hidden="true"></i> </td> <!-- Mostrar el nombre del archivo sin extensión -->
                                 </tr>
                             @endforeach
-
+        
                         </tbody>
                     </table>
                 @else
                     <p>No hay datos en los archivos CSV/XLSX.</p>
                 @endif
             </div>
-        </div>
+        </div>  
     </div>
 @stop
 
 @section('css')
-    {{-- <link rel="stylesheet" href="/css/admin_custom.css"> --}}
+ {{-- <link rel="stylesheet" href="/css/admin_custom.css"> --}}
 @stop
 
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    @if (session('error'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: `{!! addslashes(session('error')) !!}`,
-            });
-        </script>
-    @endif
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const buttons = document.querySelectorAll('.process-btn');
-            buttons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const fileName = this.getAttribute('data-filename');
+        $(document).ready(function() {
+            $('#delete').on('click', function(e) {
+                e.preventDefault();
 
-                    fetch('{{ route('main.store') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                file: fileName
-                            })
-                        })
-                        .then(async response => {
-                            const text = await response.text();
-                            console.log("Respuesta cruda:", text);
-                            if (!response.ok) {
-                                throw new Error(text);
-                            }
-                            return JSON.parse(text); // parsear manualmente
-                        })
-                        .then(data => {
-                            alert('Procesado correctamente');
-                            console.log(data);
-                        })
-                        .catch(error => {
-                            alert(error.message);
-                            console.error(error);
-                        });
-
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: "¡No podrás revertir esto!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sí, eliminarlo',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire(
+                            'Eliminado',
+                            'El archivo ha sido eliminado.',
+                            'success'
+                        );
+                        // Aquí puedes enviar una solicitud o redirigir a una ruta de eliminación
+                        // window.location.href = $(this).data('url');
+                    }
                 });
             });
         });

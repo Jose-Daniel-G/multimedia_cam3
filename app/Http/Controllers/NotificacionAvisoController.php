@@ -291,6 +291,7 @@ class NotificacionAvisoController extends Controller
         
                 if (isset($dataRaw[0][1])) {
                     $id_plantilla = substr($dataRaw[0][1], 0, 1);
+                    $plantilla = TipoPlantilla::find($id_plantilla);
                     $n_registros = $dataRaw[1][1];
                     $n_pdfs = $dataRaw[2][1];
         
@@ -298,7 +299,8 @@ class NotificacionAvisoController extends Controller
                         'file' => $fileExcel,
                         'n_registros' => $n_registros,
                         'n_pdfs' => $n_pdfs,
-                        'id_plantilla' => $id_plantilla
+                        'id_plantilla' => $id_plantilla,
+                        'plantilla' => $plantilla->nombre_plantilla
                     ];
                 }
             }

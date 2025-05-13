@@ -36,7 +36,7 @@
             <div class="col-12">
                 <label class="badge bg-success">Total Archivos Excel: {{ count($excelFiles) }}</label>
                 @if (!empty($excelFiles))
-                    <table class="table table-bordered table-striped dataTable dtr-inline">
+                    <table class="table table-bordered table-striped dataTable dtr-inline table-hover">
                         <thead>
                             <tr>
                                 <th>Tipo plantilla</th>
@@ -49,10 +49,10 @@
                         <tbody>
                             @foreach ($excelFiles as $row)
                                 <tr>
-                                    <td>{{ $row['id_plantilla'] }}</td> <!-- Mostrar el id_plantilla -->
-                                    <td>{{ $row['file'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
-                                    <td>{{ $row['n_registros'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
-                                    <td>{{ $row['n_pdfs'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                    <td>{{ $row['plantilla'] }}</td> <!-- Mostrar el id_plantilla -->
+                                    <td>{{ $row['file'] }}        </td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                    <td>{{ $row['n_registros'] }} </td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                    <td>{{ $row['n_pdfs'] }}      </td> <!-- Mostrar el nombre del archivo sin extensión -->
                                     <td>
                                         <input data-filename="{{ $row['file'] }}" class="btn btn-primary process-btn"
                                             type="button" value="Procesar">
