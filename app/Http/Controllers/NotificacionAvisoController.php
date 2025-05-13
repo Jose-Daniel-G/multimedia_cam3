@@ -171,15 +171,6 @@ class NotificacionAvisoController extends Controller
                     'errors' => $errores
                 ], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
             }
-            
-            
-            
-            
-
-            // Si hay errores, retornar respuesta con los errores
-            if (!empty($errores)) {
-                return response()->json(['error' => collect($errores)->flatten()->all()], 422);
-            }
 
             ImportarNotificaciones::dispatch(
                 $data,

@@ -34,17 +34,21 @@ class NotificacionAvisoService
         //     'tipo_impuesto'          => 'required|integer',
         // ]);
 
-        if ($validator->fails()) {
-            Log::warning('Fila inválida en Coactivo/Persuasivo: ' . json_encode($validator->errors()->all()));
-            return;
-        }
+        // if ($validator->fails()) {
+        //     Log::warning('Fila inválida en Coactivo/Persuasivo: ' . json_encode($validator->errors()->all()));
+        //     return;
+        // }
 
-        $fechas = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
-        if (!$fechas) {
-            Log::warning("Diferencia de fechas inválida (se espera 1 mes) en fila: " . json_encode($row));
-            return;
-        }
+        // $fechas = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
+        // if (!$fechas) {
+        //     Log::warning("Diferencia de fechas inválida (se espera 1 mes) en fila: " . json_encode($row));
+        //     return;
+        // }
 
+        $fecha_publicacion = Carbon::parse($row['fecha_publicacion'])->format('Y-m-d');
+        $fecha_desfijacion = Carbon::parse($row['fecha_desfijacion'])->format('Y-m-d');
+        Log::debug("Fechas convertidas: publicación={$fecha_publicacion} / desfijación={$fecha_desfijacion}");
+        Log::debug("Fila procesada: " . json_encode($row));
         try {
             NotificacionAviso::create([
                 'publi_notificacion'       => $publi_notificacion,
@@ -55,8 +59,8 @@ class NotificacionAvisoService
                 'ruta_archivos'            => $this->rutaArchivoExel,
                 'nombre_ciudadano'         => $row['nombre_ciudadano'],
                 'cedula_identificacion'    => $row['cedula_identificacion'],
-                'fecha_publicacion'        => $fechas['fecha_publicacion']->format('Y-m-d'),
-                'fecha_desfijacion'        => $fechas['fecha_desfijacion']->format('Y-m-d'),
+                'fecha_publicacion'        => $fecha_publicacion,
+                'fecha_desfijacion'        => $fecha_desfijacion,
                 'fk_tipo_acto_tramite'     => $row['tipo_acto_tramite'] ?? null,
                 'fk_estado_publicacion'    => $row['estado_publicacion'] ?? null,
                 'fk_tipo_causa_devolucion' => $row['tipo_causa_devolucion'] ?? null,
@@ -77,9 +81,12 @@ class NotificacionAvisoService
         //     return;
         // }
 
-        $fechas = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
-        if (!$fechas) return;
-
+        // $fechas = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
+        // if (!$fechas) return;
+        $fecha_publicacion = Carbon::parse($row['fecha_publicacion'])->format('Y-m-d');
+        $fecha_desfijacion = Carbon::parse($row['fecha_desfijacion'])->format('Y-m-d');
+        Log::debug("Fechas convertidas: publicación={$fecha_publicacion} / desfijación={$fecha_desfijacion}");
+        Log::debug("Fila procesada: " . json_encode($row));
         try {
             NotificacionAviso::create([
                 'publi_notificacion'       => $publi_notificacion,
@@ -90,8 +97,8 @@ class NotificacionAvisoService
                 'ruta_archivos'            => $this->rutaArchivoExel,
                 'nombre_ciudadano'         => $row['nombre_ciudadano'],
                 'cedula_identificacion'    => $row['cedula_identificacion'],
-                'fecha_publicacion'        => $fechas['fecha_publicacion']->format('Y-m-d'),
-                'fecha_desfijacion'        => $fechas['fecha_desfijacion']->format('Y-m-d'),
+                'fecha_publicacion'        => $fecha_publicacion,
+                'fecha_desfijacion'        => $fecha_desfijacion,
                 'id_predio'                => $row['id_predio'] ?? null,
                 'objeto_contrato'          => $row['objeto_contrato'] ?? null,
                 'num_predial'              => $row['num_predial'] ?? null,
