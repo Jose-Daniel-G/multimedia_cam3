@@ -94,31 +94,51 @@
                     const fileName = this.getAttribute('data-filename');
 
                     fetch('{{ route('main.store') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                file: fileName
-                            })
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            file: fileName
                         })
-                        .then(async response => {
-                            const text = await response.text();
-                            console.log("Respuesta cruda:", text);
-                            if (!response.ok) {
-                                throw new Error(text);
+                    })
+                    .then(async response => {
+                        const text = await response.text();
+                        console.log("Respuesta cruda:", text);
+                        if (!response.ok) {
+                            try {
+                                const errorData = JSON.parse(text);
+                                console.log("Datos del error parseados:", errorData);
+                                let errorMessage = '';
+                                if (errorData.errors) {
+                                    errorMessage = Object.keys(errorData.errors).map(key => key).join('<br>');
+                                }
+                                const errorTitle = errorData.title || 'Error'; // Usar el título del JSON o un título genérico
+                                return Promise.reject({ title: errorTitle, message: errorMessage });
+                            } catch (e) {
+                                console.error("Error al parsear JSON:", e);
+                                return Promise.reject({ title: 'Error', message: text || "Ocurrió un error inesperado." });
                             }
-                            return JSON.parse(text); // parsear manualmente
-                        })
-                        .then(data => {
-                            alert('Procesado correctamente');
-                            console.log(data);
-                        })
-                        .catch(error => {
-                            alert(error.message);
-                            console.error(error);
+                        }
+                        return JSON.parse(text);
+                    })
+                    .then(data => {
+                        Swal.fire({
+                            title: 'Éxito',
+                            text: data.success,
+                            icon: 'success'
                         });
+                        console.log(data);
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            title: error.title || 'Error', // Usar el título del objeto de error o un título genérico
+                            html: error.message,
+                            icon: 'error'
+                        });
+                        console.error(error);
+                    });
 
                 });
             });
