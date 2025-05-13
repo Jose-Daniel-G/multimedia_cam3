@@ -1,7 +1,4 @@
 <?php
-// use Illuminate\Support\Facades\Auth;
-// use App\Models\Organismo;
-// $organism = Auth::check() ? Organismo::where('id', Auth::user()->organismo_id)->first() : null;
 
 return [
 
@@ -66,7 +63,7 @@ return [
     |
     */
 
-    'logo' => '<b>Notificaciones</b>',
+    'logo' => '<b>Notificaciones JD</b>',
     'logo_img' => 'vendor/adminlte/dist/img/alcaldia.jpg',
     'logo_img_class' => 'brand-image img-circle elevation-3',
     'logo_img_xl' => null,
@@ -300,31 +297,47 @@ return [
         [
             'text' => 'Dashboard',
             'route' => 'admin.home',
-            'icon' => 'fas fa-building', // Usa un icono adecuado de Font Awesome
+            'icon' => 'fas fa-home', // Usa un icono adecuado de Font Awesome
 
         ],
         [
-            'text' => 'Cargar documentos',
+            'text' => 'Por procesar',
+            'route' => 'main.create',
+            'icon' => 'fa-solid fa-spinner',
+        ],
+        [
+            'text' => 'En proceso',
+            'route' => 'main.edit',
+            'icon' => 'fa-solid fa-receipt',
+        ],
+        [
+            'text' => 'Procesado',
             'route' => 'main.index',
-            'icon' => 'fas fa-home fa-fw ',
+            'icon' => 'fa-solid fa-clipboard-check',
         ],
         [
-            'text'        => 'Usuarios',
-            'route'         => 'admin.users.index',
-            'icon' => 'fas fa-users fa-fw ',
-            'permissions'  => 'admin.users.index',
-        ],
-        [
-            'text'        => 'permisos',
-            'route'         => 'admin.permissions.index',
-            'icon' => 'fas fa-key fa-fw ',
-            'permissions'  => 'admin.users.index',
-        ],
-        [
-            'text'        => 'roles',
-            'route'         => 'admin.roles.index',
-            'icon' => 'fa-solid fa-address-book',
-            'permissions'  => 'admin.roles.index',
+            'text'        => 'Configuraciones',
+            'icon' => 'fa-solid fa-gears',
+            'submenu' => [
+                [
+                    'text'        => 'Usuarios',
+                    'route'         => 'admin.users.index',
+                    'icon' => 'fas fa-users fa-fw ',
+                    'permissions'  => 'admin.users.index',
+                ],
+                [
+                    'text'        => 'permisos',
+                    'route'         => 'admin.permissions.index',
+                    'icon' => 'fas fa-key fa-fw ',
+                    'permissions'  => 'admin.users.index',
+                ],
+                [
+                    'text'        => 'roles',
+                    'route'         => 'admin.roles.index',
+                    'icon' => 'fa-solid fa-address-book',
+                    'permissions'  => 'admin.roles.index',
+                ],
+            ],
         ],
         // ['header' => 'ADMINISTRADOR'],
         // ['header' => 'OPCIONES DE BLOG'],
@@ -423,11 +436,11 @@ return [
                     'asset' => true,
                     'location' => '//cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js',
                 ],
-                // [
-                //     'type' => 'js',
-                //     'asset' => true,
-                //     'location' => '//cdn.datatables.net/buttons/2.3.0/js/buttons.html5.min.js',
-                // ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => '//cdn.datatables.net/buttons/2.3.0/js/buttons.html5.min.js',
+                ],
                 [
                     'type' => 'js',
                     'asset' => true,

@@ -345,9 +345,11 @@ class NotificacionAvisoController extends Controller
         }
     }
 
-    public function edit(NotificacionAviso $file)
-    {
-        //
+    function edit(){
+        $organismo = $this->organismo;
+        $excelFiles = $this->files_plantilla();
+        $excelCount = count($excelFiles);
+        return view('admin.import.edit', compact('organismo', 'excelFiles', 'excelCount'));
     }
 
 
