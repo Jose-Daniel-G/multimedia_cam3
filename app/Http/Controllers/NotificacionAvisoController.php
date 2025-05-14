@@ -92,7 +92,7 @@ class NotificacionAvisoController extends Controller
         $resultado = $this->proccessFile($rutaArchivoExcel, $archivosPdf);
         $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
         $id_plantilla = Str::snake($id_plantilla);                                                         //NOMBRE PLANTILLA
-        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;                            //CARPETA DESTINO PDFS 
+        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;                            //CARPETA DESTINO PDFS
 
         if (isset($resultado['error'])) {
             return response()->json(['error', $resultado['error']]);
@@ -134,17 +134,17 @@ class NotificacionAvisoController extends Controller
                     'fecha_publicacion' => ['required'],
                     'fecha_desfijacion' => ['required'],
                 ];
-            
+
                 if (in_array($id_plantilla, [1, 2])) {
                     $row['tipo_impuesto'] = trim($row['tipo_impuesto']);
-            
+
                     $rules = array_merge($rules, [
                         'tipo_impuesto' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_acto_tramite' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_causa_devolucion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_estado_publicacion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                     ]);
-            
+
                     $erroresFecha = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
                     if (!empty($erroresFecha)) {
                         foreach ($erroresFecha as $mensaje) {
@@ -154,14 +154,13 @@ class NotificacionAvisoController extends Controller
                             $errores[$mensaje]++;
                         }
                     }
-            
                 } else {
                     $rules = array_merge($rules, [
                         'liquidacion' => ['nullable', 'regex:/^[a-zA-Z0-9]+$/'],
                         'objeto_contrato' => ['required', 'regex:/^[0-9_]+$/'],
                         'id_predio' => ['required', 'regex:/^[0-9]+$/'],
                     ]);
-            
+
                     $erroresFecha = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
                     if (!empty($erroresFecha)) {
                         foreach ($erroresFecha as $mensaje) {
@@ -172,9 +171,9 @@ class NotificacionAvisoController extends Controller
                         }
                     }
                 }
-            
+
                 $validator = Validator::make($row, $rules);
-            
+
                 if ($validator->fails()) {
                     foreach ($validator->errors()->all() as $mensaje) {
                         if (!isset($errores[$mensaje])) {
@@ -184,10 +183,10 @@ class NotificacionAvisoController extends Controller
                     }
                 }
             }
-            
+
 
             if (!empty($errores)) {
-                return response()->json(['title' => 'Errores encontrados','errors' => $errores], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
+                return response()->json(['title' => 'Errores encontrados', 'errors' => $errores], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
             }
             EventoAuditoria::create([
                 'id_publi_noti' => $publi_notificacion,
@@ -282,6 +281,7 @@ class NotificacionAvisoController extends Controller
             'rows' => $rows,
         ];
     }
+
     function files_plantilla()
     {
         $files = Storage::disk('public')->files("users/{$this->username}");
@@ -347,12 +347,8 @@ class NotificacionAvisoController extends Controller
             return $row;
         }, $data);
     }
-    
 
-    public function show()
-    {
-        //
-    }
+
     private function conversionDateExcelDay($fechaPublicacion, $fechaDesfijacion, $diasEsperados = 5)
     {
         try {
@@ -426,18 +422,6 @@ class NotificacionAvisoController extends Controller
         return view('admin.import.edit', compact('organismo', 'excelFiles', 'excelCount'));
     }
 
-
-    public function update(Request $request, NotificacionAviso $file)
-    {
-        //
-    }
-
-
-    public function destroy(NotificacionAviso $file)
-    {
-        //
-    }
-
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
     {
         $archivosValidos = array_filter($contenido, function ($archivo) use ($rutaCarpetaUsuario) {
@@ -448,6 +432,7 @@ class NotificacionAvisoController extends Controller
 
         return $archivosValidos;
     }
+
     function esPDFValido($contenido, $rutaCarpetaUsuario)
     {
         // dd(['archivos'=>$contenido, 'rutaCarpetaUsuario'=>$rutaCarpetaUsuario]);
@@ -460,6 +445,7 @@ class NotificacionAvisoController extends Controller
 
         return $archivosPdf;
     }
+
     public function estaBloqueado($rutaArchivo)
     {
         $handle = @fopen($rutaArchivo, 'r+');
@@ -470,5 +456,20 @@ class NotificacionAvisoController extends Controller
 
         fclose($handle);
         return false; // El archivo está libre
+    }
+
+    public function show()
+    {
+        //
+    }
+
+    public function update(Request $request, NotificacionAviso $file)
+    {
+        //
+    }
+
+    public function destroy(NotificacionAviso $file)
+    {
+        //
     }
 }
