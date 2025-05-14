@@ -462,11 +462,11 @@ class NotificacionAvisoController extends Controller
     {
         //
     }
+
     public function update(Request $request, NotificacionAviso $file)
     {
         //
     }
-
 
     public function destroy(NotificacionAviso $file)
     {
