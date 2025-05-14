@@ -154,7 +154,6 @@ class NotificacionAvisoController extends Controller
                             $errores[$mensaje]++;
                         }
                     }
-
                 } else {
                     $rules = array_merge($rules, [
                         'liquidacion' => ['nullable', 'regex:/^[a-zA-Z0-9]+$/'],
@@ -187,7 +186,7 @@ class NotificacionAvisoController extends Controller
 
 
             if (!empty($errores)) {
-                return response()->json(['title' => 'Errores encontrados','errors' => $errores], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
+                return response()->json(['title' => 'Errores encontrados', 'errors' => $errores], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
             }
             EventoAuditoria::create([
                 'id_publi_noti' => $publi_notificacion,
@@ -282,6 +281,7 @@ class NotificacionAvisoController extends Controller
             'rows' => $rows,
         ];
     }
+
     function files_plantilla()
     {
         $files = Storage::disk('public')->files("users/{$this->username}");
@@ -393,36 +393,34 @@ class NotificacionAvisoController extends Controller
 
             return [];
             // return [
-                //     'fecha_publicacion' => $fechaPublicacion->toDateString(),
-                //     'fecha_desfijacion' => $fechaDesfijacion->toDateString(),
-                // ];
-            } catch (\Exception $e) {
-                Log::error("Error al convertir fechas: " . $e->getMessage());
-                return ["Error al convertir fechas: " . $e->getMessage()];
-            }
+            //     'fecha_publicacion' => $fechaPublicacion->toDateString(),
+            //     'fecha_desfijacion' => $fechaDesfijacion->toDateString(),
+            // ];
+        } catch (\Exception $e) {
+            Log::error("Error al convertir fechas: " . $e->getMessage());
+            return ["Error al convertir fechas: " . $e->getMessage()];
         }
+    }
 
 
-        private function parseFechaExcel($fecha)
-        {
-            try {
-                return is_numeric($fecha)
+    private function parseFechaExcel($fecha)
+    {
+        try {
+            return is_numeric($fecha)
                 ? Carbon::instance(Date::excelToDateTimeObject($fecha))
                 : Carbon::parse($fecha);
-            } catch (\Exception $e) {
-                return null;
-            }
+        } catch (\Exception $e) {
+            return null;
         }
+    }
 
-        function edit()
+    function edit()
     {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
         $excelCount = count($excelFiles);
         return view('admin.import.edit', compact('organismo', 'excelFiles', 'excelCount'));
     }
-
-
 
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
     {
@@ -434,6 +432,7 @@ class NotificacionAvisoController extends Controller
 
         return $archivosValidos;
     }
+
     function esPDFValido($contenido, $rutaCarpetaUsuario)
     {
         // dd(['archivos'=>$contenido, 'rutaCarpetaUsuario'=>$rutaCarpetaUsuario]);
@@ -446,6 +445,7 @@ class NotificacionAvisoController extends Controller
 
         return $archivosPdf;
     }
+
     public function estaBloqueado($rutaArchivo)
     {
         $handle = @fopen($rutaArchivo, 'r+');
