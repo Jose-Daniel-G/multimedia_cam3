@@ -92,7 +92,7 @@ class NotificacionAvisoController extends Controller
         $resultado = $this->proccessFile($rutaArchivoExcel, $archivosPdf);
         $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
         $id_plantilla = Str::snake($id_plantilla);                                                         //NOMBRE PLANTILLA
-        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;                            //CARPETA DESTINO PDFS 
+        $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;                            //CARPETA DESTINO PDFS
 
         if (isset($resultado['error'])) {
             return response()->json(['error', $resultado['error']]);
@@ -134,17 +134,17 @@ class NotificacionAvisoController extends Controller
                     'fecha_publicacion' => ['required'],
                     'fecha_desfijacion' => ['required'],
                 ];
-            
+
                 if (in_array($id_plantilla, [1, 2])) {
                     $row['tipo_impuesto'] = trim($row['tipo_impuesto']);
-            
+
                     $rules = array_merge($rules, [
                         'tipo_impuesto' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_acto_tramite' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_causa_devolucion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                         'tipo_estado_publicacion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                     ]);
-            
+
                     $erroresFecha = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
                     if (!empty($erroresFecha)) {
                         foreach ($erroresFecha as $mensaje) {
@@ -154,14 +154,14 @@ class NotificacionAvisoController extends Controller
                             $errores[$mensaje]++;
                         }
                     }
-            
+
                 } else {
                     $rules = array_merge($rules, [
                         'liquidacion' => ['nullable', 'regex:/^[a-zA-Z0-9]+$/'],
                         'objeto_contrato' => ['required', 'regex:/^[0-9_]+$/'],
                         'id_predio' => ['required', 'regex:/^[0-9]+$/'],
                     ]);
-            
+
                     $erroresFecha = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
                     if (!empty($erroresFecha)) {
                         foreach ($erroresFecha as $mensaje) {
@@ -172,9 +172,9 @@ class NotificacionAvisoController extends Controller
                         }
                     }
                 }
-            
+
                 $validator = Validator::make($row, $rules);
-            
+
                 if ($validator->fails()) {
                     foreach ($validator->errors()->all() as $mensaje) {
                         if (!isset($errores[$mensaje])) {
@@ -184,7 +184,7 @@ class NotificacionAvisoController extends Controller
                     }
                 }
             }
-            
+
 
             if (!empty($errores)) {
                 return response()->json(['title' => 'Errores encontrados','errors' => $errores], 422);  // 422 es un código HTTP para "Unprocessable Entity" (Entidad no procesable)
@@ -347,12 +347,8 @@ class NotificacionAvisoController extends Controller
             return $row;
         }, $data);
     }
-    
 
-    public function show()
-    {
-        //
-    }
+
     private function conversionDateExcelDay($fechaPublicacion, $fechaDesfijacion, $diasEsperados = 5)
     {
         try {
@@ -397,28 +393,28 @@ class NotificacionAvisoController extends Controller
 
             return [];
             // return [
-            //     'fecha_publicacion' => $fechaPublicacion->toDateString(),
-            //     'fecha_desfijacion' => $fechaDesfijacion->toDateString(),
-            // ];
-        } catch (\Exception $e) {
-            Log::error("Error al convertir fechas: " . $e->getMessage());
-            return ["Error al convertir fechas: " . $e->getMessage()];
+                //     'fecha_publicacion' => $fechaPublicacion->toDateString(),
+                //     'fecha_desfijacion' => $fechaDesfijacion->toDateString(),
+                // ];
+            } catch (\Exception $e) {
+                Log::error("Error al convertir fechas: " . $e->getMessage());
+                return ["Error al convertir fechas: " . $e->getMessage()];
+            }
         }
-    }
 
 
-    private function parseFechaExcel($fecha)
-    {
-        try {
-            return is_numeric($fecha)
+        private function parseFechaExcel($fecha)
+        {
+            try {
+                return is_numeric($fecha)
                 ? Carbon::instance(Date::excelToDateTimeObject($fecha))
                 : Carbon::parse($fecha);
-        } catch (\Exception $e) {
-            return null;
+            } catch (\Exception $e) {
+                return null;
+            }
         }
-    }
 
-    function edit()
+        function edit()
     {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
@@ -427,16 +423,6 @@ class NotificacionAvisoController extends Controller
     }
 
 
-    public function update(Request $request, NotificacionAviso $file)
-    {
-        //
-    }
-
-
-    public function destroy(NotificacionAviso $file)
-    {
-        //
-    }
 
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
     {
@@ -470,5 +456,20 @@ class NotificacionAvisoController extends Controller
 
         fclose($handle);
         return false; // El archivo está libre
+    }
+
+    public function show()
+    {
+        //
+    }
+    public function update(Request $request, NotificacionAviso $file)
+    {
+        //
+    }
+
+
+    public function destroy(NotificacionAviso $file)
+    {
+        //
     }
 }
