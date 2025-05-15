@@ -126,3 +126,11 @@ php -S 127.0.0.1:8000 -t public
 php artisan users:update
 git remote get-url origin
 php artisan optimize
+
+### Se encarga de registrar la información de los inicios de sesión en tu aplicación Laravel. (AUDITORIA)
+
+composer require rappasoft/laravel-authentication-log
+
+#### Guarda: usuario que hizo el cambio, antes/después, IP, URL, user agent
+composer require owen-it/laravel-auditing
+php artisan vendor:publish --provider="OwenIt\Auditing\AuditingServiceProvider" --tag=config

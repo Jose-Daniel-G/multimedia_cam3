@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\EventoAuditoria;
 use App\Services\NotificacionAvisoService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,56 +28,67 @@ class ImportarNotificaciones implements ShouldQueue
         $this->datos = $datos;
         $this->tipoPlantillaId = (int) $tipoPlantillaId;
         $this->organismoId = (int) $organismoId;
-        $this->estadoAuditoriaId = (int) $estadoAuditoriaId; 
+        $this->estadoAuditoriaId = (int) $estadoAuditoriaId;
         $this->rutaArchivoExel = $rutaArchivoExel;
         $this->fk_idusuario = (int) $fk_idusuario;
         $this->publi_notificacion = (int) $publi_notificacion;
     }
-    
 
     public function handle()
     {
-        // Obtener la extensión del archivo
-        $extension = strtolower(pathinfo($this->rutaArchivoExel, PATHINFO_EXTENSION));
-        
-        // Asegurarse de que $fk_idusuario es un entero
-        $fk_idusuario = is_numeric($this->fk_idusuario) ? (int) $this->fk_idusuario : null;
-        
         try {
-            Log::info('Job ImportarNotificaciones iniciado', [
-                'tipoPlantillaId' => $this->tipoPlantillaId,
-                'organismoId' => $this->organismoId,
-                'estadoAuditoriaId' => $this->estadoAuditoriaId,
-                'rutaArchivoExel' => $this->rutaArchivoExel,
-                'fk_idusuario' => $this->fk_idusuario,
-                'publi_notificacion' => $this->publi_notificacion
-            ]);
-    
+            // Estado "E": En Proceso
+            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
+                ->update([
+                    'estado_auditoria' => 'E',
+                    'datos_adicionales' => json_encode(['progreso' => 0])
+                ]);
+
+            $total = count($this->datos);
+            $procesados = 0;
+
+            $extension = strtolower(pathinfo($this->rutaArchivoExel, PATHINFO_EXTENSION));
+
             $service = new NotificacionAvisoService(
                 $this->tipoPlantillaId,
                 $this->organismoId,
                 $this->estadoAuditoriaId,
                 $this->rutaArchivoExel,
-                $fk_idusuario
+                $this->fk_idusuario
             );
-    
-            Log::info('Servicio NotificacionAvisoService creado con éxito');
-    
+
             foreach ($this->datos as $index => $row) {
-                // Comprobar si la fila está vacía
                 if (empty($row) || !is_array($row) || count(array_filter($row)) === 0) {
-                    // Log para filas vacías
-                    Log::info('Fila vacía detectada en índice real ' . $index);
-                    continue; // Saltar filas vacías
+                    Log::info("Fila vacía detectada en índice {$index}");
+                    continue;
                 }
-                // Log::info('Procesando fila', ['index' => $index,'row' => $row,'extension' => $extension,'publi_notificacion' => $this->publi_notificacion]);
-                // Procesar fila con el servicio
+
                 $service->procesarFila($row, $extension, $this->publi_notificacion);
+
+                $procesados++;
+                $porcentaje = intval(($procesados / $total) * 100);
+
+                EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
+                    ->update([
+                        'datos_adicionales' => json_encode(['progreso' => $porcentaje])
+                    ]);
             }
+
+            // Estado "P": Publicado (todo salió bien)
+            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
+                ->update(['estado_auditoria' => 'P']);
         } catch (\Exception $e) {
-            Log::error('Error en el Job ImportarNotificaciones:  '. $e->getMessage());
+            Log::error("Error en ImportarNotificaciones: {$e->getMessage()}");
+
+            // Estado "F": Fallido
+            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
+                ->update([
+                    'estado_auditoria' => 'F',
+                    'datos_adicionales' => json_encode([
+                        'progreso' => 0,
+                        'error' => $e->getMessage()
+                    ])
+                ]);
         }
     }
-    
-    
 }

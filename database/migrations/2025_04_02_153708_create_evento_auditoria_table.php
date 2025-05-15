@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('idusuario');
             $table->unsignedBigInteger('id_plantilla');
             $table->integer('cont_registros');
-            $table->enum('estado_auditoria', ['E', 'P']); // 'E': En Proceso, 'P': Publicado
+            $table->enum('estado_auditoria', ['E', 'P', 'F']); // 'E': En Proceso, 'P': Publicado, 'F': Fallido
             $table->json('datos_adicionales');
             $table->timestamp('fecha_auditoria')->useCurrent();
             $table->timestamps();

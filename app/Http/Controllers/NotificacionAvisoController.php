@@ -383,12 +383,10 @@ class NotificacionAvisoController extends Controller
 
             // Comparar la fecha de desfijación, permitiendo un pequeño margen de diferencia
             // Esto podría ser por ejemplo un rango de +- 3 días
-            $fechaMinimaDesfijacion = $fechaEsperada->copy()->subDays(3);  // 3 días antes
-            $fechaMaximaDesfijacion = $fechaEsperada->copy()->addDays(3);   // 3 días después
 
-            if ($fechaDesfijacion->lt($fechaMinimaDesfijacion) || $fechaDesfijacion->gt($fechaMaximaDesfijacion)) {
-                Log::warning("La fecha de desfijación debería estar entre {$fechaMinimaDesfijacion->toDateString()} y {$fechaMaximaDesfijacion->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
-                return ["La fecha de desfijación debería estar entre {$fechaMinimaDesfijacion->toDateString()} y {$fechaMaximaDesfijacion->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}."];
+            if ($fechaDesfijacion->lt($fechaPublicacion) || $fechaDesfijacion->gt($fechaEsperada)) {
+                Log::warning("La fecha de desfijación debería estar entre {$fechaPublicacion->toDateString()} y {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
+                return ["La fecha de desfijación debería estar entre {$fechaPublicacion->toDateString()} y {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}."];
             }
 
             return [];
@@ -419,6 +417,13 @@ class NotificacionAvisoController extends Controller
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
         $excelCount = count($excelFiles);
+
+        // $auditoria = EventoAuditoria::where('id_publi_noti', $id)->first();
+
+        // $estado = $auditoria->estado_auditoria;
+        // $progreso = json_decode($auditoria->datos_adicionales)->progreso ?? 0;
+        
+
         return view('admin.import.edit', compact('organismo', 'excelFiles', 'excelCount'));
     }
 
