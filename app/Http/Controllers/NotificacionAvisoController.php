@@ -89,7 +89,7 @@ class NotificacionAvisoController extends Controller
         $contenido_pdf = scandir($rutaCarpetaOrigen);                                                      // Escanear contenido de la carpeta
         $archivosPdf = $this->esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                             // valida que los PDF esten registrados en csv, xlsx, xls
         $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
-        $resultado = $this->proccessFile($rutaArchivoExcel, $archivosPdf);
+        $resultado = $this->processFile($rutaArchivoExcel, $archivosPdf);
         $id_plantilla = $resultado['id_plantilla'];                                                        //ID PLANTILLA
         $id_plantilla = Str::snake($id_plantilla);                                                         //NOMBRE PLANTILLA
         $destino = $this->baseDir . "/pdfs/" . $folder . "/" . $this->username;                            //CARPETA DESTINO PDFS
@@ -128,6 +128,8 @@ class NotificacionAvisoController extends Controller
             $data = $this->convertirFechasEnArray($data);
 
             foreach ($data as $index => $row) {
+                Log::debug("Fila $index: " . json_encode($row));
+
                 $rules = [
                     'nombre_ciudadano' => ['required', 'string', 'max:255'],
                     'cedula_identificacion' => ['required', 'regex:/^[0-9]+$/'],
@@ -233,7 +235,7 @@ class NotificacionAvisoController extends Controller
         }
     }
 
-    public function proccessFile($rutaArchivoExcel, $archivosPdf)
+    public function processFile($rutaArchivoExcel, $archivosPdf)
     {
         $sheet_file = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
 
@@ -244,7 +246,7 @@ class NotificacionAvisoController extends Controller
         log::debug("sheet_file: " . json_encode($sheet_file[0][1]));
         $id_plantilla = substr($sheet_file[0][1], 0, 1);
         $columnaNombre = in_array($id_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
-        Log::debug("file: $rutaArchivoExcel");
+        // Log::debug("file: $rutaArchivoExcel");
         Log::debug("Plantilla detectada: $id_plantilla");
 
         if (!isset($sheet_file[3])) {
@@ -264,6 +266,9 @@ class NotificacionAvisoController extends Controller
             }, $rows),
             fn($h) => $h !== ''
         ));
+
+        $this->extraerCodigoDesdeColumna($rows, $headers, 'tipo_acto_tramite');
+        $this->extraerCodigoDesdeColumna($rows, $headers, 'tipo_impuesto');
 
 
         $archivosPdf = array_map(function ($archivo) {
@@ -377,12 +382,7 @@ class NotificacionAvisoController extends Controller
             $fechaEsperada = $fechaPublicacion->copy()->addMonths($mesesEsperados);
 
             // Registrar las fechas para depuración
-            Log::info("Fecha de publicación: {$fechaPublicacion->toDateString()}");
-            Log::info("Fecha de desfijación: {$fechaDesfijacion->toDateString()}");
-            Log::info("Fecha esperada de desfijación: {$fechaEsperada->toDateString()}");
-
-            // Comparar la fecha de desfijación, permitiendo un pequeño margen de diferencia
-            // Esto podría ser por ejemplo un rango de +- 3 días
+            // Log::info("Fecha de publicación: {$fechaPublicacion->toDateString()} Fecha de desfijación: {$fechaDesfijacion->toDateString()} Fecha esperada de desfijación: {$fechaEsperada->toDateString()}");
 
             if ($fechaDesfijacion->lt($fechaPublicacion) || $fechaDesfijacion->gt($fechaEsperada)) {
                 Log::warning("La fecha de desfijación debería estar entre {$fechaPublicacion->toDateString()} y {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
@@ -390,10 +390,7 @@ class NotificacionAvisoController extends Controller
             }
 
             return [];
-            // return [
-            //     'fecha_publicacion' => $fechaPublicacion->toDateString(),
-            //     'fecha_desfijacion' => $fechaDesfijacion->toDateString(),
-            // ];
+            // return ['fecha_publicacion' => $fechaPublicacion->toDateString(),'fecha_desfijacion' => $fechaDesfijacion->toDateString(),];
         } catch (\Exception $e) {
             Log::error("Error al convertir fechas: " . $e->getMessage());
             return ["Error al convertir fechas: " . $e->getMessage()];
@@ -462,7 +459,24 @@ class NotificacionAvisoController extends Controller
         fclose($handle);
         return false; // El archivo está libre
     }
+    private function extraerCodigoDesdeColumna(array &$rows, array $headers, string $nombreColumna)
+    {
+        $indice = array_search(strtolower($nombreColumna), array_map('strtolower', $headers));
 
+        if ($indice !== false) {
+            foreach ($rows as &$fila) {
+                if (isset($fila[$indice])) {
+                    $valorOriginal = trim($fila[$indice]);
+                    $codigo = strpos($valorOriginal, '-') !== false
+                        ? explode('-', $valorOriginal)[0]
+                        : $valorOriginal;
+
+                    $fila[$indice] = $codigo;
+                }
+            }
+            unset($fila); // buena práctica
+        }
+    }
     public function show()
     {
         //
