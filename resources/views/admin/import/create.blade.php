@@ -156,7 +156,6 @@
                             });
                             console.error(error);
                         });
-
                 });
             });
         });

@@ -6,8 +6,11 @@ composer require league/csv
 php artisan vendor:publish --provider="Maatwebsite\Excel\ExcelServiceProvider"
 
 ## EN  PHP.INI HABILITAR
-extension=gd
-extension=zip
+- extension=gd
+- extension=zip
+
+## TENER EN CUENTA aumentar en my.ini
+- max_allowed_packet=64M
 
 ## CREATE LOCAL SERVER CON XAMMP
   como administrador habre este documento

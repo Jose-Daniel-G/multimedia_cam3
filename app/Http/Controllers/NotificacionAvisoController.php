@@ -58,10 +58,21 @@ class NotificacionAvisoController extends Controller
         // Verificar si existen archivos bloqueados
         if (isset($excelFiles['abierto']) && $excelFiles['abierto']) {
             $archivosBloqueados = implode(', ', $excelFiles['archivosBloqueados']);
-            return redirect()->route('admin.home')->withErrors(["Los siguientes archivos están abiertos: {$archivosBloqueados} por favor cerrarlo, para continuar."]);
+            return redirect()->route('admin.home')->withErrors([
+                "Los siguientes archivos están abiertos: {$archivosBloqueados} por favor ciérralos para continuar."
+            ]);
         }
 
-        $excelCount = count($excelFiles);
+        // Filtrar archivos que aún no están siendo procesados
+        $archivosFiltrados = array_filter($excelFiles, function ($archivo) {
+            $fileName = $archivo['file'];
+
+            return !DB::table('evento_auditoria')
+                ->whereJsonContains('datos_adicionales->archivo', $fileName)
+                ->exists();
+        });
+        $excelFiles =  $archivosFiltrados;
+        $excelCount = count($archivosFiltrados);
 
         return view('admin.import.create', compact('organismo', 'excelFiles', 'excelCount'));
     }
@@ -409,19 +420,12 @@ class NotificacionAvisoController extends Controller
         }
     }
 
-    function edit()
+    function procesando()
     {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
         $excelCount = count($excelFiles);
-
-        // $auditoria = EventoAuditoria::where('id_publi_noti', $id)->first();
-
-        // $estado = $auditoria->estado_auditoria;
-        // $progreso = json_decode($auditoria->datos_adicionales)->progreso ?? 0;
-        
-
-        return view('admin.import.edit', compact('organismo', 'excelFiles', 'excelCount'));
+        return view('admin.import.procesando', compact('organismo', 'excelFiles', 'excelCount'));
     }
 
     function esArchivoValido($contenido, $rutaCarpetaUsuario)

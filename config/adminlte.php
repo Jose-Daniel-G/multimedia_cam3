@@ -307,7 +307,7 @@ return [
         ],
         [
             'text' => 'En proceso',
-            'route' => 'main.edit',
+            'route' => 'main.procesando',
             'icon' => 'fa-solid fa-receipt',
         ],
         [
