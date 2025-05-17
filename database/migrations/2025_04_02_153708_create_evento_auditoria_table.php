@@ -16,18 +16,11 @@ return new class extends Migration
             $table->unsignedBigInteger('id_publi_noti');
             $table->unsignedBigInteger('idusuario');
             $table->unsignedBigInteger('id_plantilla');
-            // $table->string('nombre_archivo'); // <- Nueva columna para registrar el nombre del archivo
             $table->integer('cont_registros');
             $table->enum('estado_auditoria', ['E', 'P', 'F']); // 'E': En Proceso, 'P': Publicado, 'F': Fallido
             $table->json('datos_adicionales');
             $table->timestamp('fecha_auditoria')->useCurrent();
             $table->timestamps();
-
-            // $table->foreign('id_publi_noti')
-            //     ->references('id_notificacion')
-            //     ->on('notificaciones_avisos')
-            //     ->onDelete('cascade');
-            
             $table->foreign('idusuario')->references('id')->on('users');
             $table->foreign('id_plantilla')->references('id_tipo_plantilla')->on('tipo_plantilla');
         });

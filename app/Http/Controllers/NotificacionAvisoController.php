@@ -34,7 +34,7 @@ class NotificacionAvisoController extends Controller
     {
         $this->middleware(function ($request, $next) {
             $this->usuario = Auth::user();
-            $this->organismo = Organismo::find($this->usuario->organismo_id);
+            $this->organismo = Organismo::find(auth::user()->organismo_id);
             $this->username = strtok($this->usuario->email, '@'); // forma más rápida
             $this->baseDir = storage_path('app/public');
             $this->rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
@@ -209,6 +209,7 @@ class NotificacionAvisoController extends Controller
                 'estado_auditoria' => 'E',
                 'datos_adicionales' => json_encode([
                     'organismo_id' => $organismo->id,
+                    'archivo' => $archivoExcel,
                     'archivo_cargado' => true,
                     'tipo_plantilla' => $id_plantilla
                 ]),
@@ -424,9 +425,47 @@ class NotificacionAvisoController extends Controller
     {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
+
+        foreach ($excelFiles as &$archivo) {
+            $evento = DB::table('evento_auditoria')
+                ->whereJsonContains('datos_adicionales->archivo', $archivo['file'])
+                ->orderByDesc('created_at')
+                ->first();
+            log::debug("evento: " . json_encode($evento));
+            if ($evento) {
+                $datos = json_decode($evento->datos_adicionales ?? '{}', true);
+
+                $procesados = $evento->cont_registros;
+                $total = (int) $archivo['n_registros'];
+                $porcentaje = $total > 0 ? intval(($procesados / $total) * 100) : 0;
+
+                $archivo['procesados'] = $procesados;
+                $archivo['porcentaje'] = min($porcentaje, 100);
+                $archivo['estado_codigo'] = $evento->estado_auditoria; // clave interna
+                $archivo['estado'] = match ($evento->estado_auditoria) {
+                    'P' => 'Publicado',
+                    'F' => 'Fallido',
+                    default => 'En proceso',
+                };
+                $archivo['observaciones'] = $datos['observaciones'] ?? '';
+                $archivo['fecha'] = $evento->fecha_auditoria;
+                
+            } else {
+                // Si no tiene evento, no se considera
+                $archivo['estado_codigo'] = null;
+            }
+        }
+
+        // ❗ Filtrar solo archivos en estado 'E' o 'P'
+        $excelFiles = array_filter($excelFiles, function ($archivo) {
+            return in_array($archivo['estado_codigo'], ['E', 'P']);
+        });
+        Log::debug("archivos: " . json_encode($excelFiles));
         $excelCount = count($excelFiles);
+
         return view('admin.import.procesando', compact('organismo', 'excelFiles', 'excelCount'));
     }
+
 
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
     {
