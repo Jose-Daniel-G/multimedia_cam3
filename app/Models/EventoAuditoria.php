@@ -9,6 +9,7 @@ class EventoAuditoria extends Model
 {
     
     protected $table = 'evento_auditoria'; // si tu tabla se llama así
+    protected $primaryKey = 'id_evento'; // 👈 importante
     public $timestamps = false;
     protected $fillable = [
         'idusuario',

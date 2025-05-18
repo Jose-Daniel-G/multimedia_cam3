@@ -47,9 +47,38 @@ class NotificacionAvisoController extends Controller
     {
         $organismo = $this->organismo;
         $excelFiles = $this->files_plantilla();
+
+        foreach ($excelFiles as &$archivo) {
+            $evento = DB::table('evento_auditoria')
+                ->whereJsonContains('datos_adicionales->archivo', $archivo['file'])
+                ->orderByDesc('created_at')
+                ->first();
+            Log::debug("evento: " . json_encode($evento));
+            if ($evento && $evento->estado_auditoria === 'P') {
+                $datos = json_decode($evento->datos_adicionales ?? '{}', true);
+
+                $procesados = $evento->cont_registros;
+                $total = (int) $archivo['n_registros'];
+                $porcentaje = $total > 0 ? intval(($procesados / $total) * 100) : 0;
+
+                $archivo['procesados'] = $procesados;
+                $archivo['porcentaje'] = min($porcentaje, 100);
+                $archivo['estado'] = 'Publicado';
+                $archivo['fecha'] = $evento->fecha_auditoria;
+                $archivo['observaciones'] = $datos['observaciones'] ?? '';
+            } else {
+                // Marcar como no válido para filtrar después
+                $archivo['estado'] = null;
+            }
+        }
+
+        // ❗ Filtrar solo los archivos con estado 'Publicado'
+        $excelFiles = array_filter($excelFiles, fn($archivo) => $archivo['estado'] === 'Publicado');
         $excelCount = count($excelFiles);
+
         return view('admin.import.index', compact('organismo', 'excelFiles', 'excelCount'));
     }
+
     public function create()
     {
         $organismo = $this->organismo;
@@ -211,7 +240,8 @@ class NotificacionAvisoController extends Controller
                     'organismo_id' => $organismo->id,
                     'archivo' => $archivoExcel,
                     'archivo_cargado' => true,
-                    'tipo_plantilla' => $id_plantilla
+                    'tipo_plantilla' => $id_plantilla,
+                    // 'progreso' => 0
                 ]),
                 'fecha_auditoria' => now(),
             ]);
@@ -449,7 +479,6 @@ class NotificacionAvisoController extends Controller
                 };
                 $archivo['observaciones'] = $datos['observaciones'] ?? '';
                 $archivo['fecha'] = $evento->fecha_auditoria;
-                
             } else {
                 // Si no tiene evento, no se considera
                 $archivo['estado_codigo'] = null;

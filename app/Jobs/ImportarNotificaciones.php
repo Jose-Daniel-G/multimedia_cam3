@@ -37,17 +37,19 @@ class ImportarNotificaciones implements ShouldQueue
     public function handle()
     {
         try {
-            // Estado "E": En Proceso
-            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
-                ->update([
-                    'estado_auditoria' => 'E',
-                    'datos_adicionales' => json_encode(['progreso' => 0])
+            $evento = EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)->first();
+
+            if ($evento) {
+                $datosAdicionales = json_decode($evento->datos_adicionales ?? '{}', true);
+                $datosAdicionales['progreso'] =  json_encode(['progreso' => 0]);
+
+                $evento->update([
+                    'datos_adicionales' => json_encode($datosAdicionales),
                 ]);
+            }
 
             $total = count($this->datos);
             $procesados = 0;
-
-            $extension = strtolower(pathinfo($this->rutaArchivoExel, PATHINFO_EXTENSION));
 
             $service = new NotificacionAvisoService(
                 $this->tipoPlantillaId,
@@ -56,6 +58,8 @@ class ImportarNotificaciones implements ShouldQueue
                 $this->rutaArchivoExel,
                 $this->fk_idusuario
             );
+            $extension = strtolower(pathinfo($this->rutaArchivoExel, PATHINFO_EXTENSION));
+
 
             foreach ($this->datos as $index => $row) {
                 if (empty($row) || !is_array($row) || count(array_filter($row)) === 0) {
@@ -65,16 +69,14 @@ class ImportarNotificaciones implements ShouldQueue
 
                 $service->procesarFila($row, $extension, $this->publi_notificacion);
 
+
                 $procesados++;
                 $porcentaje = intval(($procesados / $total) * 100);
 
-                EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
-                    ->update([
-                        'datos_adicionales' => json_encode(['progreso' => $porcentaje])
-                    ]);
+                $this->actualizarProgresoEvento($this->publi_notificacion, $porcentaje);
             }
 
-            // Estado "P": Publicado (todo salió bien)
+            // Al finalizar, podrías actualizar el estado a 'P' (Publicado), si no hubo errores
             EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
                 ->update(['estado_auditoria' => 'P']);
         } catch (\Exception $e) {
@@ -90,5 +92,19 @@ class ImportarNotificaciones implements ShouldQueue
                     ])
                 ]);
         }
+    }
+    private function actualizarProgresoEvento($publiNotiId, $porcentaje)
+    {
+        Log::info("Actualizando progreso del evento con ID {$publiNotiId} a {$porcentaje}%");
+        // $evento = EventoAuditoria::where('id_publi_noti', $publiNotiId)->first();
+
+        // if ($evento) {
+        //     $datosAdicionales = json_decode($evento->datos_adicionales ?? '{}', true);
+        //     $datosAdicionales['progreso'] = $porcentaje;
+
+        //     $evento->update([
+        //         'datos_adicionales' => json_encode($datosAdicionales),
+        //     ]);
+        // }
     }
 }
