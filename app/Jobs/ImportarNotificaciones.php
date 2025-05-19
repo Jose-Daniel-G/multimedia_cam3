@@ -119,15 +119,15 @@ class ImportarNotificaciones implements ShouldQueue
     private function actualizarProgresoEvento($publiNotiId, $porcentaje)
     {
         Log::info("Actualizando progreso del evento con ID {$publiNotiId} a {$porcentaje}%");
-        // $evento = EventoAuditoria::where('id_publi_noti', $publiNotiId)->first();
+        $evento = EventoAuditoria::where('id_publi_noti', $publiNotiId)->first();
 
-        // if ($evento) {
-        //     $dataAdicionales = json_decode($evento->data_adicionales ?? '{}', true);
-        //     $dataAdicionales['progreso'] = $porcentaje;
+        if ($evento) {
+            $dataAdicionales = json_decode($evento->data_adicionales ?? '{}', true);
+            $dataAdicionales['progreso'] = $porcentaje;
 
-        //     $evento->update([
-        //         'data_adicionales' => json_encode($dataAdicionales),
-        //     ]);
-        // }
+            $evento->update([
+                'data_adicionales' => json_encode($dataAdicionales),
+            ]);
+        }
     }
 }
