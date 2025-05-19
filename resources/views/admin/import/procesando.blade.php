@@ -34,8 +34,9 @@
         @endif
         <div class="row">
             <div class="col-12">
-                <label class="badge bg-success">Total Archivos Excel: {{ count($excelFiles) }}</label>
                 @if (!empty($excelFiles))
+                <label class="badge bg-success">Total Archivos Excel: {{ count($excelFiles) }}</label>
+
                     <table class="table table-bordered table-striped dataTable dtr-inline">
                         <thead>
                             <tr>
@@ -64,13 +65,12 @@
                                                 <div class="progress-bar" role="progressbar"
                                                     style="width:100%; border-radius: 0.5rem;" aria-valuenow="100%"
                                                     aria-valuemin="0" aria-valuemax="100">
-                                                    {{ $row['porcentaje'] }}
+                                                    {{ $row['estado'] }}
                                                 </div>
                                             </div>
                                         </td>
-                                        <td> {{ $row['estado'] }}</td>
-                                        <td>{{ $row['fecha'] ? \Carbon\Carbon::parse($row['fecha'])->format('d/m/Y H:i') : '—' }}
-
+                                        <td> {{ $row['porcentaje'] }}</td>
+                                        <td> {{ date(now()) }} </td>
                                         <td> <i class="fa-solid fa-trash text-danger" id="delete" aria-hidden="true"></i>
                                         </td>
                                     </tr>
@@ -84,7 +84,7 @@
                         </tbody>
                     </table>
                 @else
-                    <pclass="text-center">No hay procesos en cola</pclass=>
+                    <p class="text-center">No hay procesos en cola</p>
                 @endif
             </div>
         </div>

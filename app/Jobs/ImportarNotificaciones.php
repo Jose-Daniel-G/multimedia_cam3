@@ -89,19 +89,18 @@ class ImportarNotificaciones implements ShouldQueue
                 $this->actualizarProgresoEvento($this->publi_notificacion, $porcentaje, $procesados);
             }
 
-            // if (!is_dir($this->destino)) {
-            //     mkdir($this->destino, 0755, true);
-            // }
+            if (!is_dir($this->destino)) {
+                mkdir($this->destino, 0755, true);
+            }
 
-            // Log::debug("Ruta de destino: $this->destino");
-            // rename($this->rutaCarpetaOrigen, "{$this->destino}/{$this->fileExcelNamefolder}");
+            Log::debug("Ruta de destino: $this->destino");
+            rename($this->rutaCarpetaOrigen, "{$this->destino}/{$this->fileExcelNamefolder}");
 
-            // if (isset($this->archivoExcel) && file_exists("{$this->rutaCarpetaUsuario}/{$this->archivoExcel}")) {
-            //     rename("{$this->rutaCarpetaUsuario}/{$this->archivoExcel}", "{$this->destino}/{$this->archivoExcel}");
-            // }
+            if (isset($this->archivoExcel) && file_exists("{$this->rutaCarpetaUsuario}/{$this->archivoExcel}")) {
+                rename("{$this->rutaCarpetaUsuario}/{$this->archivoExcel}", "{$this->destino}/{$this->archivoExcel}");
+            }
 
-            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
-                ->update(['estado_auditoria' => 'P']);
+            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)->update(['estado_auditoria' => 'P']);
 
         } catch (\Exception $e) {
             Log::error("Error en ImportarNotificaciones: {$e->getMessage()}");

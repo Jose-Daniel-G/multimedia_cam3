@@ -46,34 +46,45 @@ class NotificacionAvisoController extends Controller
     public function index()
     {
         $organismo = $this->organismo;
-        $excelFiles = $this->files_plantilla();
 
-        foreach ($excelFiles as &$archivo) {
-            $evento = DB::table('evento_auditoria')
-                ->whereJsonContains('datos_adicionales->archivo', $archivo['file'])
-                ->orderByDesc('created_at')
-                ->first();
-            Log::debug("evento: " . json_encode($evento));
-            if ($evento && $evento->estado_auditoria === 'P') {
-                $datos = json_decode($evento->datos_adicionales ?? '{}', true);
+        // Traer solo eventos publicados por el usuario autenticado
+        $eventos = DB::table('evento_auditoria')
+            ->where('idusuario', auth()->id())
+            ->where('estado_auditoria', 'P')
+            ->orderByDesc('created_at')
+            ->get();
 
-                $procesados = $evento->cont_registros;
-                $total = (int) $archivo['n_registros'];
-                $porcentaje = $total > 0 ? intval(($procesados / $total) * 100) : 0;
+        $excelFiles = [];
 
-                $archivo['procesados'] = $procesados;
-                $archivo['porcentaje'] = min($porcentaje, 100);
-                $archivo['estado'] = 'Publicado';
-                $archivo['fecha'] = $evento->fecha_auditoria;
-                $archivo['observaciones'] = $datos['observaciones'] ?? '';
-            } else {
-                // Marcar como no válido para filtrar después
-                $archivo['estado'] = null;
+        foreach ($eventos as $evento) {
+            $datos = json_decode($evento->datos_adicionales ?? '{}', true);
+            if (is_string($datos)) {
+                $datos = json_decode($datos, true); // manejar doble codificación
             }
+
+            $archivo = $datos['archivo'] ?? null;
+            if (!$archivo) {
+                continue;
+            }
+
+            $procesados = $evento->cont_registros;
+            $total = $procesados; // No se guarda n_registros en los datos, así que lo igualamos
+            $porcentaje = 100; // Como el estado es 'P', asumimos 100%
+
+            $excelFiles[] = [
+                'file' => $archivo,
+                'n_registros' => $total,
+                'n_pdfs' => $datos['total_pdfs'] ?? '-', // si no hay, se muestra como '-'
+                'id_plantilla' => $evento->id_plantilla,
+                'plantilla' => optional(TipoPlantilla::find($evento->id_plantilla))->nombre_plantilla,
+                'procesados' => $procesados,
+                'porcentaje' => $porcentaje,
+                'estado' => 'Publicado',
+                'fecha' => $evento->fecha_auditoria,
+                'observaciones' => $datos['observaciones'] ?? '',
+            ];
         }
 
-        // ❗ Filtrar solo los archivos con estado 'Publicado'
-        $excelFiles = array_filter($excelFiles, fn($archivo) => $archivo['estado'] === 'Publicado');
         $excelCount = count($excelFiles);
 
         return view('admin.import.index', compact('organismo', 'excelFiles', 'excelCount'));
@@ -321,20 +332,25 @@ class NotificacionAvisoController extends Controller
         ];
     }
 
-    function files_plantilla()
+    function files_plantilla($index = false)  // Obtener archivos de plantilla
     {
-        $files = Storage::disk('public')->files("users/{$this->username}");
+        // $folder = $index ? 'pdfs/'. Str::snake($this->organismo->depe_nomb) : 'users';
+        $rutaCarpetaUsuario = $this->baseDir . "/users/" . $this->username;
+        Log::debug("Ruta de carpeta de usuario: $rutaCarpetaUsuario");
+
+        $files = Storage::disk('public')->files("{$rutaCarpetaUsuario}/{$this->username}");
+
         $excelRawFiles = collect($files)
             ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
             ->map(fn($file) => basename($file))
             ->toArray();
-
-        $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
+        log::debug("Archivos Excel: " . json_encode($excelRawFiles));
         $excelFiles = [];
         $archivosBloqueados = [];
 
         foreach ($excelRawFiles as $fileExcel) {
             $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
+            // Log::debug("Ruta del archivo Excel: $rutaArchivoExcel");
             $abierto = $this->estaBloqueado($rutaArchivoExcel); // chequeo por archivo
             if ($abierto) {
                 Log::warning("El archivo {$fileExcel} está abierto o en uso.");

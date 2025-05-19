@@ -34,8 +34,9 @@
         @endif
         <div class="row">
             <div class="col-12">
-                <label class="badge bg-success">Total Archivos Excel: {{ count($excelFiles) }}</label>
                 @if (!empty($excelFiles))
+                    <label class="badge bg-success">Total Archivos Excel: {{ count($excelFiles) }}</label>
+
                     <table class="table table-bordered table-striped dataTable dtr-inline">
                         <thead>
                             <tr>
@@ -52,35 +53,40 @@
                         <tbody>
                             @foreach ($excelFiles as $index => $row)
                                 <tr>
-                                    <td>{{ $row['id_plantilla'] }}</td> <!-- Mostrar el id_plantilla -->
-                                    <td>{{ $row['file'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
-                                    <td>{{ $row['n_registros'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
-                                    <td>{{ $row['n_pdfs'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                    {{-- <td>{{ dd($row) }}</td>  --}}
+                                    <td>{{ $row['id_plantilla'] }}</td> 
+                                    <td>{{ $row['file'] }}</td>
+                                    <td>{{ $row['n_registros'] }}</td>
+                                    <td>{{ $row['n_pdfs'] }}</td>
                                     <td>
+                                        {{-- {{  $index }}% --}}
                                         <div class="progress">
-                                            <div class="progress-bar" role="progressbar" style="width:100%; border-radius: 0.5rem;" aria-valuenow="100%" aria-valuemin="0" aria-valuemax="100">
-                                                100% {{ $row['progreso']  }}
+                                            <div class="progress-bar" role="progressbar"
+                                                style="width:100%; border-radius: 0.5rem;" aria-valuenow="100%"
+                                                aria-valuemin="0" aria-valuemax="100">
+                                                {{ $row['porcentaje'] }}
                                             </div>
-                                        </div>                                        
-                                    </td> <!-- Mostrar el nombre del archivo sin extensión -->
-                                    <td> Publicado(cuando el archivo procesado con 0 errores) </td> <!-- Mostrar el nombre del archivo sin extensión -->
-                                    <td> {{ date(now()) }} </td> <!-- Mostrar el nombre del archivo sin extensión -->
-                                    <td> <i class="fa-solid fa-trash text-danger" id="delete" aria-hidden="true"></i> </td> <!-- Mostrar el nombre del archivo sin extensión -->
+                                        </div>
+                                    </td>
+                                    <td> {{ $row['estado'] }}</td>
+                                    <td> {{  $row['fecha'] }} </td>
+                                    <td> <i class="fa-solid fa-trash text-danger" id="delete" aria-hidden="true"></i>
+                                    </td>
                                 </tr>
                             @endforeach
-        
+
                         </tbody>
                     </table>
                 @else
-                    <p>No hay datos en los archivos CSV/XLSX.</p>
+                    <p class="text-center">No hay nada en cola procesado actualmente</p>
                 @endif
             </div>
-        </div>  
+        </div>
     </div>
 @stop
 
 @section('css')
- {{-- <link rel="stylesheet" href="/css/admin_custom.css"> --}}
+    {{-- <link rel="stylesheet" href="/css/admin_custom.css"> --}}
 @stop
 
 @section('js')
