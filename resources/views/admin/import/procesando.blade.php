@@ -49,32 +49,42 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @php $hayEnCola = false; @endphp
                             @foreach ($excelFiles as $index => $row)
-                            <tr>
-                                <td>{{ $row['id_plantilla'] }}</td>
-                                <td>{{ $row['file'] }}</td>
-                                <td>{{ $row['n_registros'] }}</td>
-                                <td>{{ $row['n_pdfs'] }}</td>
-                                <td>
-                                    <div class="progress" role="progressbar" aria-valuenow="{{ $row['porcentaje'] }}"
-                                        aria-valuemin="0" aria-valuemax="100">
-                                        <div class="progress-bar"
-                                            style="width: {{ $row['porcentaje'] }}%; border-radius: 0.5rem;">
-                                            {{ $row['porcentaje'] }}%
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>{{ $row['estado'] }}</td>
-                                <td>{{ $row['fecha'] ? \Carbon\Carbon::parse($row['fecha'])->format('d/m/Y H:i') : '—' }}
-                                </td>
+                                @if ($row['estado'] != 'Publicado')
+                                    @php $hayEnCola = true; @endphp
+                                    <tr>
+                                        <td>{{ $row['id_plantilla'] }}</td> <!-- Mostrar el id_plantilla -->
+                                        <td>{{ $row['file'] }}</td>
+                                        <td>{{ $row['n_registros'] }}</td>
+                                        <td>{{ $row['n_pdfs'] }}</td>
+                                        <td>
+                                            {{-- {{  $index }}% --}}
+                                            <div class="progress">
+                                                <div class="progress-bar" role="progressbar"
+                                                    style="width:100%; border-radius: 0.5rem;" aria-valuenow="100%"
+                                                    aria-valuemin="0" aria-valuemax="100">
+                                                    {{ $row['porcentaje'] }}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td> {{ $row['estado'] }}</td>
+                                        <td>{{ $row['fecha'] ? \Carbon\Carbon::parse($row['fecha'])->format('d/m/Y H:i') : '—' }}
 
-                            </tr>
+                                        <td> <i class="fa-solid fa-trash text-danger" id="delete" aria-hidden="true"></i>
+                                        </td>
+                                    </tr>
+                                @endif
                             @endforeach
-
+                            @if (!$hayEnCola)
+                                <tr>
+                                    <td colspan="8" class="text-center">No hay procesos en cola</td>
+                                </tr>
+                            @endif
                         </tbody>
                     </table>
                 @else
-                    <p>No hay datos en los archivos CSV/XLSX.</p>
+                    <pclass="text-center">No hay procesos en cola</pclass=>
                 @endif
             </div>
         </div>

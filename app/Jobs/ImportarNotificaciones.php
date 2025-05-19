@@ -28,10 +28,11 @@ class ImportarNotificaciones implements ShouldQueue
     protected $archivoExcel;
     protected $rutaCarpetaUsuario;
 
-    public function __construct($data,$publi_notificacion,$id_plantilla,$organismo_id,$estadoAuditoriaId,
-                                $rutaArchivoExel,$fk_idusuario,$fileExcelNamefolder,$rutaCarpetaOrigen,
-                                $destino,$archivoExcel,$rutaCarpetaUsuario) {
-
+    public function __construct(
+        $data, $publi_notificacion, $id_plantilla, $organismo_id, $estadoAuditoriaId,
+        $rutaArchivoExel, $fk_idusuario, $fileExcelNamefolder, $rutaCarpetaOrigen,
+        $destino, $archivoExcel, $rutaCarpetaUsuario
+    ) {
         $this->data = $data;
         $this->id_plantilla = (int) $id_plantilla;
         $this->organismo_id = (int) $organismo_id;
@@ -52,11 +53,11 @@ class ImportarNotificaciones implements ShouldQueue
             $evento = EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)->first();
 
             if ($evento) {
-                $dataAdicionales = json_decode($evento->data_adicionales ?? '{}', true);
-                $dataAdicionales['progreso'] =  json_encode(['progreso' => 0]);
+                $dataAdicionales = $this->decodeDatosAdicionales($evento->datos_adicionales);
+                $dataAdicionales['progreso'] = 0;
 
                 $evento->update([
-                    'data_adicionales' => json_encode($dataAdicionales),
+                    'datos_adicionales' => json_encode($dataAdicionales),
                 ]);
             }
 
@@ -70,8 +71,8 @@ class ImportarNotificaciones implements ShouldQueue
                 $this->rutaArchivoExel,
                 $this->fk_idusuario
             );
-            $extension = strtolower(pathinfo($this->rutaArchivoExel, PATHINFO_EXTENSION));
 
+            $extension = strtolower(pathinfo($this->rutaArchivoExel, PATHINFO_EXTENSION));
 
             foreach ($this->data as $index => $row) {
                 if (empty($row) || !is_array($row) || count(array_filter($row)) === 0) {
@@ -81,53 +82,69 @@ class ImportarNotificaciones implements ShouldQueue
 
                 $service->procesarFila($row, $extension, $this->publi_notificacion);
 
-
                 $procesados++;
                 $porcentaje = intval(($procesados / $total) * 100);
 
                 $this->actualizarProgresoEvento($this->publi_notificacion, $porcentaje);
             }
-            
-            if (!is_dir($this->destino)) {
-                mkdir($this->destino, 0755, true);
-            }
-            Log::debug("Ruta de destino: $this->destino");
-            rename($this->rutaCarpetaOrigen, "{$this->destino}/{$this->fileExcelNamefolder}");
 
-            // Mover el archivo Excel o CSV a la carpeta de destino
-            if (isset($archivoExcel) && file_exists("{$this->rutaCarpetaUsuario}/{$archivoExcel}")) {
-                rename("{$this->rutaCarpetaUsuario}/{$archivoExcel}", "{$this->destino}/{$archivoExcel}");
-            }
+            // if (!is_dir($this->destino)) {
+            //     mkdir($this->destino, 0755, true);
+            // }
 
-            // Al finalizar, podrías actualizar el estado a 'P' (Publicado), si no hubo errores
-            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)->update(['estado_auditoria' => 'P']);
+            // Log::debug("Ruta de destino: $this->destino");
+            // rename($this->rutaCarpetaOrigen, "{$this->destino}/{$this->fileExcelNamefolder}");
+
+            // if (isset($this->archivoExcel) && file_exists("{$this->rutaCarpetaUsuario}/{$this->archivoExcel}")) {
+            //     rename("{$this->rutaCarpetaUsuario}/{$this->archivoExcel}", "{$this->destino}/{$this->archivoExcel}");
+            // }
+
+            EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
+                ->update(['estado_auditoria' => 'P']);
 
         } catch (\Exception $e) {
             Log::error("Error en ImportarNotificaciones: {$e->getMessage()}");
 
-            // Estado "F": Fallido
             EventoAuditoria::where('id_publi_noti', $this->publi_notificacion)
                 ->update([
                     'estado_auditoria' => 'F',
-                    'data_adicionales' => json_encode([
+                    'datos_adicionales' => json_encode([
                         'progreso' => 0,
                         'error' => $e->getMessage()
                     ])
                 ]);
         }
     }
+
     private function actualizarProgresoEvento($publiNotiId, $porcentaje)
     {
         Log::info("Actualizando progreso del evento con ID {$publiNotiId} a {$porcentaje}%");
+
         $evento = EventoAuditoria::where('id_publi_noti', $publiNotiId)->first();
 
         if ($evento) {
-            $dataAdicionales = json_decode($evento->data_adicionales ?? '{}', true);
+            $dataAdicionales = $this->decodeDatosAdicionales($evento->datos_adicionales);
             $dataAdicionales['progreso'] = $porcentaje;
 
             $evento->update([
-                'data_adicionales' => json_encode($dataAdicionales),
+                'datos_adicionales' => json_encode($dataAdicionales),
             ]);
         }
+    }
+
+    private function decodeDatosAdicionales($valor)
+    {
+        if (is_array($valor)) {
+            return $valor;
+        }
+
+        if (is_string($valor)) {
+            $array = json_decode($valor, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($array)) {
+                return $array;
+            }
+        }
+
+        return [];
     }
 }

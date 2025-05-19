@@ -57,10 +57,9 @@
                                     <td>{{ $row['n_registros'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
                                     <td>{{ $row['n_pdfs'] }}</td> <!-- Mostrar el nombre del archivo sin extensión -->
                                     <td>
-                                        {{-- {{  $index }}% --}}
                                         <div class="progress">
                                             <div class="progress-bar" role="progressbar" style="width:100%; border-radius: 0.5rem;" aria-valuenow="100%" aria-valuemin="0" aria-valuemax="100">
-                                                100% {{-- $row['progress']  --}}
+                                                100% {{ $row['progreso']  }}
                                             </div>
                                         </div>                                        
                                     </td> <!-- Mostrar el nombre del archivo sin extensión -->

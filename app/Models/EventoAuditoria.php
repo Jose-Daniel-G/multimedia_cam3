@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class EventoAuditoria extends Model
 {
-    
+
     protected $table = 'evento_auditoria'; // si tu tabla se llama así
     protected $primaryKey = 'id_evento'; // 👈 importante
     public $timestamps = false;
@@ -21,4 +21,7 @@ class EventoAuditoria extends Model
         'fecha_auditoria',
     ];
     use HasFactory;
+    protected $casts = [
+        'datos_adicionales' => 'array', // esto es válido y puede ayudar
+    ];
 }

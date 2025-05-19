@@ -453,17 +453,16 @@ class NotificacionAvisoController extends Controller
                 ->whereJsonContains('datos_adicionales->archivo', $archivo['file'])
                 ->orderByDesc('created_at')
                 ->first();
-            log::debug("evento: " . json_encode($evento));
+
             if ($evento) {
                 $datos = json_decode($evento->datos_adicionales ?? '{}', true);
 
-                $procesados = $evento->cont_registros;
-                $total = (int) $archivo['n_registros'];
-                $porcentaje = $total > 0 ? intval(($procesados / $total) * 100) : 0;
+                // ✅ Tomamos el progreso directamente desde datos_adicionales
+                $porcentaje = isset($datos['progreso']) ? (int) $datos['progreso'] : 0;
 
-                $archivo['procesados'] = $procesados;
+                $archivo['procesados'] = $porcentaje; // este campo es opcional
                 $archivo['porcentaje'] = min($porcentaje, 100);
-                $archivo['estado_codigo'] = $evento->estado_auditoria; // clave interna
+                $archivo['estado_codigo'] = $evento->estado_auditoria;
                 $archivo['estado'] = match ($evento->estado_auditoria) {
                     'P' => 'Publicado',
                     'F' => 'Fallido',
@@ -472,7 +471,6 @@ class NotificacionAvisoController extends Controller
                 $archivo['observaciones'] = $datos['observaciones'] ?? '';
                 $archivo['fecha'] = $evento->fecha_auditoria;
             } else {
-                // Si no tiene evento, no se considera
                 $archivo['estado_codigo'] = null;
             }
         }
@@ -481,11 +479,13 @@ class NotificacionAvisoController extends Controller
         $excelFiles = array_filter($excelFiles, function ($archivo) {
             return in_array($archivo['estado_codigo'], ['E', 'P']);
         });
+
         Log::debug("archivos: " . json_encode($excelFiles));
         $excelCount = count($excelFiles);
 
         return view('admin.import.procesando', compact('organismo', 'excelFiles', 'excelCount'));
     }
+
 
 
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
