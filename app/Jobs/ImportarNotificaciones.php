@@ -83,9 +83,10 @@ class ImportarNotificaciones implements ShouldQueue
                 $service->procesarFila($row, $extension, $this->publi_notificacion);
 
                 $procesados++;
+                Log::info("Fila procesada: {$procesados} de {$total}");
                 $porcentaje = intval(($procesados / $total) * 100);
 
-                $this->actualizarProgresoEvento($this->publi_notificacion, $porcentaje);
+                $this->actualizarProgresoEvento($this->publi_notificacion, $porcentaje, $procesados);
             }
 
             // if (!is_dir($this->destino)) {
@@ -116,7 +117,7 @@ class ImportarNotificaciones implements ShouldQueue
         }
     }
 
-    private function actualizarProgresoEvento($publiNotiId, $porcentaje)
+    private function actualizarProgresoEvento($publiNotiId, $porcentaje, $procesados)
     {
         Log::info("Actualizando progreso del evento con ID {$publiNotiId} a {$porcentaje}%");
 
@@ -127,6 +128,7 @@ class ImportarNotificaciones implements ShouldQueue
             $dataAdicionales['progreso'] = $porcentaje;
 
             $evento->update([
+                'cont_registros' => $procesados,
                 'datos_adicionales' => json_encode($dataAdicionales),
             ]);
         }
