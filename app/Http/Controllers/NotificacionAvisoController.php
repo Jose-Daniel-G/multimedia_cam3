@@ -251,23 +251,15 @@ class NotificacionAvisoController extends Controller
                 $publi_notificacion,
                 $id_plantilla,
                 $organismo->id,
-                1,
+                1,                      //estadoAuditoriaId
                 $rutaArchivoExcel,
-                auth()->id(),
-                auth()->user()->username,
-                $extension
+                auth()->id(), //auth()->user()->username,$extension
+                $fileExcelNamefolder,
+                $rutaCarpetaOrigen,
+                $destino,
+                $archivoExcel,
+                $this->rutaCarpetaUsuario
             );
-
-            if (!is_dir($destino)) {
-                mkdir($destino, 0755, true);
-            }
-            // Log::debug("Ruta de destino: $destino");
-            // rename($rutaCarpetaOrigen, "{$destino}/{$fileExcelNamefolder}");
-
-            // // Mover el archivo Excel o CSV a la carpeta de destino
-            // if (isset($archivoExcel) && file_exists("{$rutaCarpetaUsuario}/{$archivoExcel}")) {
-            //     rename("{$rutaCarpetaUsuario}/{$archivoExcel}", "{$destino}/{$archivoExcel}");
-            // }
 
             DB::commit();
             return response()->json(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);

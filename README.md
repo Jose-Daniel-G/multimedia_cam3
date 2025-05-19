@@ -43,6 +43,7 @@ php artisan config:clear
 php artisan view:clear
 php artisan route:clear
 php artisan view:clear
+php artisan clear-compiled
 
 php artisan queue:flush
 php artisan queue:restart
