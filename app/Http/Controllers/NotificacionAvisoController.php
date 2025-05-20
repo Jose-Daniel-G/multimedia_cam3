@@ -74,7 +74,7 @@ class NotificacionAvisoController extends Controller
             $excelFiles[] = [
                 'file' => $archivo,
                 'n_registros' => $total,
-                'n_pdfs' => $datos['total_pdfs'] ?? '-', // si no hay, se muestra como '-'
+                'n_pdfs' =>       $datos['pdfsAsociados'] ?? '-', // si no hay, se muestra como '-'
                 'id_plantilla' => $evento->id_plantilla,
                 'plantilla' => optional(TipoPlantilla::find($evento->id_plantilla))->nombre_plantilla,
                 'procesados' => $procesados,
@@ -164,6 +164,7 @@ class NotificacionAvisoController extends Controller
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
             $id_plantilla = $resultado['id_plantilla'];
+            $pdfsAsociados = $resultado['pdfsAsociados'];
             $headers      = $resultado['headers'];
             $rows         = $resultado['rows'];
 
@@ -249,7 +250,7 @@ class NotificacionAvisoController extends Controller
                     'archivo' => $archivoExcel,
                     'archivo_cargado' => true,
                     'tipo_plantilla' => $id_plantilla,
-                    // 'progreso' => 0
+                    'pdfsAsociados' => $pdfsAsociados
                 ]),
                 'fecha_auditoria' => now(),
             ]);
@@ -334,6 +335,7 @@ class NotificacionAvisoController extends Controller
             'id_plantilla' => $id_plantilla,
             'pdfsFaltantes' => $pdfsFaltantes,
             'pdfNoEncontrados' => $pdfNoEncontrados,
+            'pdfsAsociados' => $pdfsAsociados,
             'headers' => $headers,
             'rows' => $rows,
         ];
