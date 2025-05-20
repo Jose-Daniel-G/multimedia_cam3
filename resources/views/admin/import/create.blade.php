@@ -118,7 +118,7 @@
                                             key => key).join('<br>');
                                     }
                                     const errorTitle = errorData.title ||
-                                    'Error'; // Usar el título del JSON o un título genérico
+                                        'Error'; // Usar el título del JSON o un título genérico
                                     return Promise.reject({
                                         title: errorTitle,
                                         message: errorMessage
@@ -135,27 +135,38 @@
                             return JSON.parse(text);
                         })
                         .then(data => {
+                            if (data.error) {
+                                return Promise.reject({
+                                    title: 'Error',
+                                    message: data.error
+                                });
+                            }
+
+                            // Si no hay error, mostrar éxito
                             Swal.fire({
                                 title: 'Éxito',
-                                text: data.success,
+                                text: data.success || 'Operación realizada con éxito',
                                 icon: 'success'
                             });
-                            console.log(data);
 
-                            // Eliminar la fila del DOM usando el fileName
-                            const slug = fileName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+                            // Aquí eliminas la fila o lo que necesites
+                            const slug = fileName.toLowerCase().replace(/\s+/g, '-').replace(
+                                /[^a-z0-9\-]/g, '');
                             const fila = document.getElementById('fila-' + slug);
-                            if (fila) {fila.remove();}
+                            if (fila) {
+                                fila.remove();
+                            }
+
                             console.log(data);
-                        })
-                        .catch(error => {
-                            Swal.fire({
-                                title: error.title || 'Error', // Usar el título del objeto de error o un título genérico
-                                html: error.message,
-                                icon: 'error'
-                            });
-                            console.error(error);
+                        }).catch (error => {
+                        Swal.fire({
+                            title: error.title ||
+                            'Error', // Usar el título del objeto de error o un título genérico
+                            html: error.message,
+                            icon: 'error'
                         });
+                        console.error(error);
+                    });
                 });
             });
         });
