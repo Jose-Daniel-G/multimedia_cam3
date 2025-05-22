@@ -1194,7 +1194,8 @@
             "type": "library",
             "autoload": {
                 "files": [
-                    "library/HTMLPurifier.composer.php"
+                    "library/HTMLPurifier.composer.php",
+                    "app/Helpers/helpers.php"
                 ],
                 "psr-0": {
                     "HTMLPurifier": "library/"
