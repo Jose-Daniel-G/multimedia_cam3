@@ -413,8 +413,8 @@ class NotificacionAvisoController extends Controller
     private function conversionDateExcelDay($fechaPublicacion, $fechaDesfijacion, $diasEsperados = 5)
     {
         try {
-            $fechaPublicacion = $this->parseFechaExcel($fechaPublicacion);
-            $fechaDesfijacion = $this->parseFechaExcel($fechaDesfijacion);
+            $fechaPublicacion = parseFechaExcel($fechaPublicacion);
+            $fechaDesfijacion = parseFechaExcel($fechaDesfijacion);
 
             if ($fechaDesfijacion->diffInDays($fechaPublicacion) !== $diasEsperados) {
                 Log::warning("La diferencia entre {$fechaPublicacion->toDateString()} y {$fechaDesfijacion->toDateString()} no es de {$diasEsperados} días.");
@@ -431,8 +431,8 @@ class NotificacionAvisoController extends Controller
     private function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $mesesEsperados = 1)
     {
         try {
-            $fechaPublicacion = $this->parseFechaExcel($fecha_publicacion);
-            $fechaDesfijacion = $this->parseFechaExcel($fecha_desfijacion);
+            $fechaPublicacion = parseFechaExcel($fecha_publicacion);
+            $fechaDesfijacion = parseFechaExcel($fecha_desfijacion);
 
             // Calcular la fecha esperada sumando el número de meses
             $fechaEsperada = $fechaPublicacion->copy()->addMonths($mesesEsperados);
@@ -453,62 +453,77 @@ class NotificacionAvisoController extends Controller
         }
     }
 
-
-    private function parseFechaExcel($fecha)
-    {
-        try {
-            return is_numeric($fecha)
-                ? Carbon::instance(Date::excelToDateTimeObject($fecha))
-                : Carbon::parse($fecha);
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-    function procesando()
+    public function procesandoView()
     {
         $organismo = $this->organismo;
-        $excelFiles = $this->files_plantilla();
-
-        foreach ($excelFiles as &$archivo) {
-            $evento = DB::table('evento_auditoria')
-                ->whereJsonContains('datos_adicionales->archivo', $archivo['file'])
-                ->orderByDesc('created_at')
-                ->first();
-
-            if ($evento) {
-                $datos = json_decode($evento->datos_adicionales ?? '{}', true);
-
-                // ✅ Tomamos el progreso directamente desde datos_adicionales
-                $porcentaje = isset($datos['progreso']) ? (int) $datos['progreso'] : 0;
-
-                $archivo['procesados'] = $porcentaje; // este campo es opcional
-                $archivo['porcentaje'] = min($porcentaje, 100);
-                $archivo['estado_codigo'] = $evento->estado_auditoria;
-                $archivo['estado'] = match ($evento->estado_auditoria) {
-                    'P' => 'Publicado',
-                    'F' => 'Fallido',
-                    default => 'En proceso',
-                };
-                $archivo['observaciones'] = $datos['observaciones'] ?? '';
-                $archivo['fecha'] = $evento->fecha_auditoria;
-            } else {
-                $archivo['estado_codigo'] = null;
-            }
-        }
-
-        // ❗ Filtrar solo archivos en estado 'E' o 'P'
-        $excelFiles = array_filter($excelFiles, function ($archivo) {
-            return in_array($archivo['estado_codigo'], ['E', 'P']);
-        });
-
-        Log::debug("archivos: " . json_encode($excelFiles));
+        $excelFiles = $this->armarListaConProgreso();
         $excelCount = count($excelFiles);
 
         return view('admin.import.procesando', compact('organismo', 'excelFiles', 'excelCount'));
     }
 
+    public function jsonProgreso()
+    {
+        return response()->json(array_values($this->armarListaConProgreso()));
+    }
 
+    protected function armarListaConProgreso()
+    {
+        $excelFiles = $this->files_plantilla();
+
+        // Traer todos los eventos relevantes de una vez
+        $eventos = DB::table('evento_auditoria')
+            ->whereIn('estado_auditoria', ['E', 'P'])
+            ->orderByDesc('fecha_auditoria')
+            ->get();
+
+        foreach ($excelFiles as &$archivo) {
+            Log::debug("Procesando archivo: " . $archivo['file']);
+
+            $eventoEncontrado = null;
+
+            foreach ($eventos as $evento) {
+                $datosJson = $evento->datos_adicionales ?? '{}';
+                $datos = json_decode($datosJson, true); // Validar que sea un JSON válido
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    Log::debug("JSON inválido: " . $datosJson);
+                    continue;
+                }
+                Log::debug("Datos del evento: " . json_encode($datos));
+                $archivoEvento = $datos['archivo'] ?? null;
+
+                Log::debug("Comparando con evento: archivo=" . $archivoEvento);
+
+                if ($archivoEvento === $archivo['file']) {
+                    $eventoEncontrado = $evento;
+                    break;
+                }
+            }
+
+            if ($eventoEncontrado) {
+                $datos = json_decode($eventoEncontrado->datos_adicionales ?? '{}', true);
+                $porcentaje = isset($datos['progreso']) ? (int) $datos['progreso'] : 0;
+
+                $archivo['porcentaje'] = min($porcentaje, 100);
+                $archivo['procesados'] = $porcentaje;
+                $archivo['n_registros'] = $eventoEncontrado->cont_registros;
+                $archivo['n_pdfs'] = $datos['pdfsAsociados'] ?? 0;
+                $archivo['estado_codigo'] = $eventoEncontrado->estado_auditoria;
+                $archivo['estado'] = match ($eventoEncontrado->estado_auditoria) {
+                    'P' => 'Publicado',
+                    'F' => 'Fallido',
+                    default => 'En proceso',
+                };
+                $archivo['observaciones'] = $datos['observaciones'] ?? '';
+                $archivo['fecha'] = $eventoEncontrado->fecha_auditoria;
+                $archivo['id_plantilla'] = $archivo['tipo'];
+            } else {
+                $archivo['estado_codigo'] = null;
+            }
+        }
+
+        return array_filter($excelFiles, fn($a) => in_array($a['estado_codigo'], ['E', 'P']));
+    }
 
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
     {

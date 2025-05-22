@@ -1,17 +1,18 @@
 <?php
 
-if (!function_exists('normalizar')) {
-    function normalizar($cadena) {
-        // Convertir a minúsculas para evitar diferencias en mayúsculas
-        $cadena = mb_strtolower($cadena, 'UTF-8');
+use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-        // Reemplazar caracteres con tildes y la "ñ"
-        $buscar = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'];
-        $reemplazar = ['a', 'e', 'i', 'o', 'u', 'u', 'n'];
-        $cadena = str_replace($buscar, $reemplazar, $cadena);
-
-        // Eliminar cualquier otro carácter no alfanumérico excepto espacios
-        return preg_replace('/[^a-z0-9 ]/', '', $cadena);
+if (!function_exists('parseFechaExcel')) {
+    function parseFechaExcel($fecha)
+    {
+        try {
+            return is_numeric($fecha)
+                ? Carbon::instance(Date::excelToDateTimeObject($fecha))
+                : Carbon::parse($fecha);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }
 if (!function_exists('extraerCodigoDesdeColumna')) {
@@ -34,6 +35,21 @@ if (!function_exists('extraerCodigoDesdeColumna')) {
         }
     }
 }
+if (!function_exists('normalizar')) {
+    function normalizar($cadena) {
+        // Convertir a minúsculas para evitar diferencias en mayúsculas
+        $cadena = mb_strtolower($cadena, 'UTF-8');
+
+        // Reemplazar caracteres con tildes y la "ñ"
+        $buscar = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'];
+        $reemplazar = ['a', 'e', 'i', 'o', 'u', 'u', 'n'];
+        $cadena = str_replace($buscar, $reemplazar, $cadena);
+
+        // Eliminar cualquier otro carácter no alfanumérico excepto espacios
+        return preg_replace('/[^a-z0-9 ]/', '', $cadena);
+    }
+}
+
 // if (!function_exists('conversor')) {
 //     function conversor($data, $columnas_no_vacias) {
 //         return $data = array_map(function ($fila) use ($columnas_no_vacias) {
