@@ -4,10 +4,12 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-
 class TipoActoTramiteSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
     {
         $data = [
             ['nombre_tipo_acto_tramite' => 'Inscripción de Propiedad'],
@@ -71,6 +73,15 @@ class TipoActoTramiteSeeder extends Seeder
             ['nombre_tipo_acto_tramite' => 'Registro de Reorganización Empresarial'],
             ['nombre_tipo_acto_tramite' => 'Autorización de Cancelación de Hipoteca'],
             ['nombre_tipo_acto_tramite' => 'Aprobación de Proyecto de Parcelación'],
+            ['nombre_tipo_acto_tramite' => 'Constitución de Fideicomiso'],
+            ['nombre_tipo_acto_tramite' => 'Disolución de Sociedad'],
+            ['nombre_tipo_acto_tramite' => 'Concordato'],
+            ['nombre_tipo_acto_tramite' => 'Acto de Partición'],
+            ['nombre_tipo_acto_tramite' => 'Registro de Poder General'],
+            ['nombre_tipo_acto_tramite' => 'Desenglobe'],
+            ['nombre_tipo_acto_tramite' => 'Englobe'],
+            ['nombre_tipo_acto_tramite' => 'Otros'],
+            ['nombre_tipo_acto_tramite' => 'Inscripción de Leasing Habitacional'],
         ];
 
         DB::table('tipo_acto_tramite')->insert($data);
