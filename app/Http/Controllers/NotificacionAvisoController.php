@@ -321,8 +321,8 @@ class NotificacionAvisoController extends Controller
             fn($h) => $h !== ''
         ));
 
-        $this->extraerCodigoDesdeColumna($rows, $headers, 'tipo_acto_tramite');
-        $this->extraerCodigoDesdeColumna($rows, $headers, 'tipo_impuesto');
+        extraerCodigoDesdeColumna($rows, $headers, 'tipo_acto_tramite');
+        extraerCodigoDesdeColumna($rows, $headers, 'tipo_impuesto');
 
 
         $archivosPdf = array_map(function ($archivo) {
@@ -545,24 +545,7 @@ class NotificacionAvisoController extends Controller
         fclose($handle);
         return false; // El archivo está libre
     }
-    private function extraerCodigoDesdeColumna(array &$rows, array $headers, string $nombreColumna)
-    {
-        $indice = array_search(strtolower($nombreColumna), array_map('strtolower', $headers));
 
-        if ($indice !== false) {
-            foreach ($rows as &$fila) {
-                if (isset($fila[$indice])) {
-                    $valorOriginal = trim($fila[$indice]);
-                    $codigo = strpos($valorOriginal, '-') !== false
-                        ? explode('-', $valorOriginal)[0]
-                        : $valorOriginal;
-
-                    $fila[$indice] = $codigo;
-                }
-            }
-            unset($fila); // buena práctica
-        }
-    }
     public function show()
     {
         //

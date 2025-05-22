@@ -9,7 +9,7 @@ php artisan vendor:publish --provider="Maatwebsite\Excel\ExcelServiceProvider"
 - extension=gd
 - extension=zip
 
-## TENER EN CUENTA aumentar en my.ini
+## TENER EN CUENTA aumentar en my.ini [mysqld]
 - max_allowed_packet=64M
 
 ## CREATE LOCAL SERVER CON XAMMP
