@@ -164,6 +164,7 @@ class NotificacionAvisoController extends Controller
             $ultimo = DB::table('notificaciones_avisos')->max('publi_notificacion');
             $publi_notificacion = $ultimo ? $ultimo + 1 : 1;
             $id_plantilla = $resultado['id_plantilla'];
+            Log::debug("ID Plantilla: " . $id_plantilla);
             $pdfsAsociados = $resultado['pdfsAsociados'];
             $headers      = $resultado['headers'];
             $rows         = $resultado['rows'];
