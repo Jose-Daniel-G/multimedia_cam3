@@ -351,60 +351,82 @@ class NotificacionAvisoController extends Controller
         ];
     }
 
-    function files_plantilla()
+    public function files_plantilla($fileOrigin = true)
     {
-        $resultado = $this->files_plantilla_sin_cache();  // Ejecutar siempre sin caché para validar si hay archivos bloqueados
+        $resultado = $this->files_plantilla_sin_cache($fileOrigin);
 
-        if (!isset($resultado['abierto'])) {              // Si no hay archivos bloqueados, se cachea el resultado por 10 segundos
+        if (is_array($resultado) && !isset($resultado['abierto'])) {
             Cache::put("archivos_excel_{$this->username}", $resultado, 10);
         }
 
         return $resultado;
     }
 
-    function files_plantilla_sin_cache()
+    public function files_plantilla_sin_cache($fileOrigin)
     {
-        $files = Storage::disk('public')->files("users/{$this->username}");
+        Log::debug("fileOrigin: $fileOrigin");
+
+        // Preparar ruta según el origen
+        if ($fileOrigin) {
+            $files = Storage::disk('public')->files("users/{$this->username}");
+            $rutaCarpetaUsuario = $this->baseDir . "/users/{$this->username}";
+            Log::debug("route 1: " . json_encode($files));
+            Log::debug("quemado: users/{$this->username}");
+        } else {
+            // Si organismo es array en vez de objeto, se corrige
+            $nombreOrganismo = is_object($this->organismo)
+                ? $this->organismo->depe_nomb
+                : ($this->organismo['depe_nomb'] ?? 'organismo_desconocido');
+
+            $folder = Str::snake($nombreOrganismo);
+            $files = Storage::disk('public')->files("pdfs/{$folder}/{$this->username}");
+            $rutaCarpetaUsuario = $this->baseDir . "/pdfs/{$folder}/{$this->username}";
+
+            Log::debug("route 2: " . json_encode($files));
+            Log::debug("quemado: pdfs/{$folder}/{$this->username}");
+        }
 
         $excelRawFiles = collect($files)
             ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
             ->map(fn($file) => basename($file))
             ->toArray();
 
-        $rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
         $excelFiles = [];
         $archivosBloqueados = [];
 
         foreach ($excelRawFiles as $fileExcel) {
             $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
-            $abierto = estaBloqueado($rutaArchivoExcel);
-            if ($abierto) {
+
+            if (!file_exists($rutaArchivoExcel)) continue;
+
+            if (estaBloqueado($rutaArchivoExcel)) {
                 Log::warning("El archivo {$fileExcel} está abierto o en uso.");
                 $archivosBloqueados[] = $fileExcel;
                 break;
-            } else {
-                if (!file_exists($rutaArchivoExcel)) continue;
+            }
 
+            try {
                 $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
 
                 if (isset($dataRaw[0][1])) {
                     $id_plantilla = substr($dataRaw[0][1], 0, 1);
                     $plantilla = TipoPlantilla::find($id_plantilla);
-                    $n_registros = $dataRaw[1][1];
-                    $n_pdfs = $dataRaw[2][1];
+                    $n_registros = $dataRaw[1][1] ?? 0;
+                    $n_pdfs = $dataRaw[2][1] ?? 0;
 
                     $excelFiles[] = [
                         'file' => $fileExcel,
                         'n_registros' => $n_registros,
                         'n_pdfs' => $n_pdfs,
                         'id_plantilla' => $id_plantilla,
-                        'plantilla' => $plantilla->nombre_plantilla
+                        'plantilla' => $plantilla?->nombre_plantilla ?? 'Desconocida',
                     ];
                 }
+            } catch (\Exception $e) {
+                Log::error("Error procesando $fileExcel: " . $e->getMessage());
             }
         }
 
-        // Si hay archivos bloqueados, devolver la advertencia (no se cachea)
         if (!empty($archivosBloqueados)) {
             return ['abierto' => true, 'archivosBloqueados' => $archivosBloqueados];
         }
@@ -416,7 +438,7 @@ class NotificacionAvisoController extends Controller
     public function procesandoView()
     {
         $organismo = $this->organismo;
-        $excelFiles = $this->armarListaConProgreso();
+        $excelFiles = $this->armarListaConProgreso(false);
         $excelCount = count($excelFiles);
 
         return view('admin.import.procesando', compact('organismo', 'excelFiles', 'excelCount'));
@@ -424,23 +446,21 @@ class NotificacionAvisoController extends Controller
 
     public function jsonProgreso()
     {
-        return response()->json(array_values($this->armarListaConProgreso()));
+        return response()->json(array_values($this->armarListaConProgreso(false)));
     }
 
-    protected function armarListaConProgreso()
+    protected function armarListaConProgreso($fileOrigin)
     {
-        $excelFiles = $this->files_plantilla();
+        $excelFiles = $this->files_plantilla($fileOrigin);
 
         // Traer todos los eventos relevantes de una vez
-        $eventos = DB::table('evento_auditoria')
-            ->whereIn('estado_auditoria', ['E', 'P'])
-            ->orderByDesc('fecha_auditoria')
-            ->get();
+        $eventos = DB::table('evento_auditoria')->whereIn('estado_auditoria', ['E', 'P'])
+            ->orderByDesc('fecha_auditoria')->get();
 
         Log::debug("Evento: " . $eventos);
 
         foreach ($excelFiles as &$archivo) {
-            Log::debug("Procesando archivo: " . $archivo['file']);
+            Log::debug("Excel_files: " . $archivo['file']);
 
             $eventoEncontrado = null;
             $datosEvento = [];
