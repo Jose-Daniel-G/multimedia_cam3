@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -183,7 +184,7 @@ class NotificacionAvisoController extends Controller
 
             $errores = [];
 
-            $data = $this->convertirFechasEnArray($data);
+            $data = convertirFechasEnArray($data);
 
             foreach ($data as $index => $row) {
                 Log::debug("Fila $index: " . json_encode($row));
@@ -350,7 +351,18 @@ class NotificacionAvisoController extends Controller
         ];
     }
 
-    function files_plantilla()  // Obtener archivos de plantilla
+    function files_plantilla()
+    {
+        $resultado = $this->files_plantilla_sin_cache();  // Ejecutar siempre sin caché para validar si hay archivos bloqueados
+
+        if (!isset($resultado['abierto'])) {              // Si no hay archivos bloqueados, se cachea el resultado por 10 segundos
+            Cache::put("archivos_excel_{$this->username}", $resultado, 10);
+        }
+
+        return $resultado;
+    }
+
+    function files_plantilla_sin_cache()
     {
         $files = Storage::disk('public')->files("users/{$this->username}");
 
@@ -365,13 +377,12 @@ class NotificacionAvisoController extends Controller
 
         foreach ($excelRawFiles as $fileExcel) {
             $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
-            $abierto = estaBloqueado($rutaArchivoExcel); // chequeo por archivo
+            $abierto = estaBloqueado($rutaArchivoExcel);
             if ($abierto) {
                 Log::warning("El archivo {$fileExcel} está abierto o en uso.");
                 $archivosBloqueados[] = $fileExcel;
                 break;
             } else {
-
                 if (!file_exists($rutaArchivoExcel)) continue;
 
                 $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
@@ -393,7 +404,7 @@ class NotificacionAvisoController extends Controller
             }
         }
 
-        // Si hay archivos bloqueados, devolver la advertencia
+        // Si hay archivos bloqueados, devolver la advertencia (no se cachea)
         if (!empty($archivosBloqueados)) {
             return ['abierto' => true, 'archivosBloqueados' => $archivosBloqueados];
         }
@@ -401,21 +412,6 @@ class NotificacionAvisoController extends Controller
         return $excelFiles;
     }
 
-    private function convertirFechasEnArray(array $data): array
-    {
-        return array_map(function ($row) {
-            foreach (['fecha_publicacion', 'fecha_desfijacion'] as $campo) {
-                if (isset($row[$campo]) && is_numeric($row[$campo])) {
-                    try {
-                        $row[$campo] = \Carbon\Carbon::instance(Date::excelToDateTimeObject($row[$campo]))->format('n/j/Y');
-                    } catch (\Exception $e) {
-                        $row[$campo] = null;
-                    }
-                }
-            }
-            return $row;
-        }, $data);
-    }
 
     public function procesandoView()
     {
@@ -441,46 +437,57 @@ class NotificacionAvisoController extends Controller
             ->orderByDesc('fecha_auditoria')
             ->get();
 
+        Log::debug("Evento: " . $eventos);
+
         foreach ($excelFiles as &$archivo) {
             Log::debug("Procesando archivo: " . $archivo['file']);
 
             $eventoEncontrado = null;
+            $datosEvento = [];
 
             foreach ($eventos as $evento) {
-                $datosJson = $evento->datos_adicionales ?? '{}';
-                $datos = json_decode($datosJson, true); // Validar que sea un JSON válido
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    Log::debug("JSON inválido: " . $datosJson);
+                // Primer decode
+                $datos = json_decode($evento->datos_adicionales ?? '{}', true);
+
+                // Si quedó como string, hacer segundo decode
+                if (is_string($datos)) {
+                    $datos = json_decode($datos, true);
+                }
+
+                // Validar errores de json_decode
+                if (json_last_error() !== JSON_ERROR_NONE || !is_array($datos)) {
+                    Log::debug("JSON inválido: " . ($evento->datos_adicionales ?? 'nulo'));
                     continue;
                 }
-                Log::debug("Datos del evento: " . json_encode($datos));
-                $archivoEvento = $datos['archivo'] ?? null;
 
+                Log::debug("Datos del evento: " . json_encode($datos));
+
+                $archivoEvento = $datos['archivo'] ?? null;
                 Log::debug("Comparando con evento: archivo=" . $archivoEvento);
 
                 if ($archivoEvento === $archivo['file']) {
                     $eventoEncontrado = $evento;
+                    $datosEvento = $datos;
                     break;
                 }
             }
 
             if ($eventoEncontrado) {
-                $datos = json_decode($eventoEncontrado->datos_adicionales ?? '{}', true);
-                $porcentaje = isset($datos['progreso']) ? (int) $datos['progreso'] : 0;
+                $porcentaje = isset($datosEvento['progreso']) ? (int) $datosEvento['progreso'] : 0;
 
                 $archivo['porcentaje'] = min($porcentaje, 100);
                 $archivo['procesados'] = $porcentaje;
                 $archivo['n_registros'] = $eventoEncontrado->cont_registros;
-                $archivo['n_pdfs'] = $datos['pdfsAsociados'] ?? 0;
+                $archivo['n_pdfs'] = $datosEvento['pdfsAsociados'] ?? 0;
                 $archivo['estado_codigo'] = $eventoEncontrado->estado_auditoria;
                 $archivo['estado'] = match ($eventoEncontrado->estado_auditoria) {
                     'P' => 'Publicado',
                     'F' => 'Fallido',
                     default => 'En proceso',
                 };
-                $archivo['observaciones'] = $datos['observaciones'] ?? '';
+                $archivo['observaciones'] = $datosEvento['observaciones'] ?? '';
                 $archivo['fecha'] = $eventoEncontrado->fecha_auditoria;
-                $archivo['id_plantilla'] = $archivo['tipo'];
+                $archivo['id_plantilla'] = $datosEvento['tipo_plantilla'];
             } else {
                 $archivo['estado_codigo'] = null;
             }
@@ -488,6 +495,7 @@ class NotificacionAvisoController extends Controller
 
         return array_filter($excelFiles, fn($a) => in_array($a['estado_codigo'], ['E', 'P']));
     }
+
 
     public function show()
     {
