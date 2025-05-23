@@ -32,16 +32,24 @@ class NotificacionAvisoController extends Controller
 
     public function __construct()
     {
+        // Middlewares de permisos
+        $this->middleware('permission:notificacion.index')->only('index');
+        $this->middleware('permission:notificacion.edit')->only('edit');
+        $this->middleware('permission:notificacion.create')->only('create');
+        $this->middleware('permission:notificacion.delete')->only('destroy');
+
+        // Middleware para inicializar propiedades del usuario
         $this->middleware(function ($request, $next) {
             $this->usuario = Auth::user();
-            $this->organismo = Organismo::find(auth::user()->organismo_id);
-            $this->username = strtok($this->usuario->email, '@'); // forma más rápida
+            $this->organismo = Organismo::find($this->usuario->organismo_id);
+            $this->username = strtok($this->usuario->email, '@');
             $this->baseDir = storage_path('app/public');
             $this->rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
 
             return $next($request);
         });
     }
+
 
     public function index()
     {
@@ -125,7 +133,7 @@ class NotificacionAvisoController extends Controller
         $organismo = $this->organismo;
         $folder = Str::snake($organismo->depe_nomb); //SIN USO
         $contenido = scandir($this->rutaCarpetaUsuario);
-        $validacion = $this->esArchivoValido($contenido, $this->rutaCarpetaUsuario);
+        $validacion = esArchivoValido($contenido, $this->rutaCarpetaUsuario);
         if (empty($validacion)) {
             return redirect()->back()->with('error', 'Error: No se encontró ningún archivo CSV, XLSX o XLS en la carpeta.');
         }
@@ -138,7 +146,7 @@ class NotificacionAvisoController extends Controller
         $rutaArchivoExcel = $this->rutaCarpetaUsuario . '/' . $archivoExcel;
 
         $contenido_pdf = scandir($rutaCarpetaOrigen);                                                      // Escanear contenido de la carpeta
-        $archivosPdf = $this->esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                             // valida que los PDF esten registrados en csv, xlsx, xls
+        $archivosPdf = esPDFValido($contenido_pdf, $rutaCarpetaOrigen);                             // valida que los PDF esten registrados en csv, xlsx, xls
         $extension = strtolower(pathinfo($archivoExcel, PATHINFO_EXTENSION));                              //Obtener extension xsls/csv
         $resultado = $this->processFile($rutaArchivoExcel, $archivosPdf);
         if (isset($resultado['error'])) {
@@ -197,7 +205,7 @@ class NotificacionAvisoController extends Controller
                         'tipo_estado_publicacion' => ['required', 'regex:/^[0-9]+$/', 'integer'],
                     ]);
 
-                    $erroresFecha = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
+                    $erroresFecha = conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], 1);
                     if (!empty($erroresFecha)) {
                         foreach ($erroresFecha as $mensaje) {
                             if (!isset($errores[$mensaje])) {
@@ -213,7 +221,7 @@ class NotificacionAvisoController extends Controller
                         'id_predio' => ['required', 'regex:/^[0-9]+$/'],
                     ]);
 
-                    $erroresFecha = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
+                    $erroresFecha = conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], 5);
                     if (!empty($erroresFecha)) {
                         foreach ($erroresFecha as $mensaje) {
                             if (!isset($errores[$mensaje])) {
@@ -357,7 +365,7 @@ class NotificacionAvisoController extends Controller
 
         foreach ($excelRawFiles as $fileExcel) {
             $rutaArchivoExcel = $rutaCarpetaUsuario . '/' . $fileExcel;
-            $abierto = $this->estaBloqueado($rutaArchivoExcel); // chequeo por archivo
+            $abierto = estaBloqueado($rutaArchivoExcel); // chequeo por archivo
             if ($abierto) {
                 Log::warning("El archivo {$fileExcel} está abierto o en uso.");
                 $archivosBloqueados[] = $fileExcel;
@@ -407,50 +415,6 @@ class NotificacionAvisoController extends Controller
             }
             return $row;
         }, $data);
-    }
-
-
-    private function conversionDateExcelDay($fechaPublicacion, $fechaDesfijacion, $diasEsperados = 5)
-    {
-        try {
-            $fechaPublicacion = parseFechaExcel($fechaPublicacion);
-            $fechaDesfijacion = parseFechaExcel($fechaDesfijacion);
-
-            if ($fechaDesfijacion->diffInDays($fechaPublicacion) !== $diasEsperados) {
-                Log::warning("La diferencia entre {$fechaPublicacion->toDateString()} y {$fechaDesfijacion->toDateString()} no es de {$diasEsperados} días.");
-                return ["La desfijacion entre fechas no es de {$diasEsperados} días."];
-            }
-
-            return []; // Sin errores
-        } catch (\Exception $e) {
-            Log::error("Error al convertir fechas: " . $e->getMessage());
-            return ["Error al procesar fechas: " . $e->getMessage()];
-        }
-    }
-
-    private function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $mesesEsperados = 1)
-    {
-        try {
-            $fechaPublicacion = parseFechaExcel($fecha_publicacion);
-            $fechaDesfijacion = parseFechaExcel($fecha_desfijacion);
-
-            // Calcular la fecha esperada sumando el número de meses
-            $fechaEsperada = $fechaPublicacion->copy()->addMonths($mesesEsperados);
-
-            // Registrar las fechas para depuración
-            // Log::info("Fecha de publicación: {$fechaPublicacion->toDateString()} Fecha de desfijación: {$fechaDesfijacion->toDateString()} Fecha esperada de desfijación: {$fechaEsperada->toDateString()}");
-
-            if ($fechaDesfijacion->lt($fechaPublicacion) || $fechaDesfijacion->gt($fechaEsperada)) {
-                Log::warning("La fecha de desfijación debería estar entre {$fechaPublicacion->toDateString()} y {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}.");
-                return ["La fecha de desfijación debería estar entre {$fechaPublicacion->toDateString()} y {$fechaEsperada->toDateString()}, pero se recibió {$fechaDesfijacion->toDateString()}."];
-            }
-
-            return [];
-            // return ['fecha_publicacion' => $fechaPublicacion->toDateString(),'fecha_desfijacion' => $fechaDesfijacion->toDateString(),];
-        } catch (\Exception $e) {
-            Log::error("Error al convertir fechas: " . $e->getMessage());
-            return ["Error al convertir fechas: " . $e->getMessage()];
-        }
     }
 
     public function procesandoView()
@@ -523,42 +487,6 @@ class NotificacionAvisoController extends Controller
         }
 
         return array_filter($excelFiles, fn($a) => in_array($a['estado_codigo'], ['E', 'P']));
-    }
-
-    function esArchivoValido($contenido, $rutaCarpetaUsuario)
-    {
-        $archivosValidos = array_filter($contenido, function ($archivo) use ($rutaCarpetaUsuario) {
-            $extensionesPermitidas = ['csv', 'xlsx', 'xls'];
-            $extension = pathinfo($archivo, PATHINFO_EXTENSION);
-            return is_file($rutaCarpetaUsuario . '/' . $archivo) && in_array(strtolower($extension), $extensionesPermitidas);
-        });
-
-        return $archivosValidos;
-    }
-
-    function esPDFValido($contenido, $rutaCarpetaUsuario)
-    {
-        // dd(['archivos'=>$contenido, 'rutaCarpetaUsuario'=>$rutaCarpetaUsuario]);
-        $archivosPdf = array_map(
-            fn($pdf) => strtolower(trim($pdf)),
-            array_filter($contenido, function ($archivo) use ($rutaCarpetaUsuario) {
-                return is_file($rutaCarpetaUsuario . '/' . $archivo) && strtolower(pathinfo($archivo, PATHINFO_EXTENSION)) === 'pdf';
-            })
-        );
-
-        return $archivosPdf;
-    }
-
-    public function estaBloqueado($rutaArchivo)
-    {
-        $handle = @fopen($rutaArchivo, 'r+');
-
-        if ($handle === false) {
-            return true; // No se puede abrir: probablemente está bloqueado o en uso
-        }
-
-        fclose($handle);
-        return false; // El archivo está libre
     }
 
     public function show()

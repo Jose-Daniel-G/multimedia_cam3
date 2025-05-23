@@ -1,8 +1,27 @@
 <?php
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
+/* -------------------------------------------------------------------------- */
+/*                        Validación de Archivos                              */
+/* -------------------------------------------------------------------------- */
+
+if (!function_exists('esArchivoValido')) {
+    function esArchivoValido($contenido, $rutaCarpetaUsuario)
+    {
+        $extensionesPermitidas = ['csv', 'xlsx', 'xls'];
+        return array_filter($contenido, function ($archivo) use ($rutaCarpetaUsuario, $extensionesPermitidas) {
+            $extension = strtolower(pathinfo($archivo, PATHINFO_EXTENSION));
+            return is_file($rutaCarpetaUsuario . '/' . $archivo) && in_array($extension, $extensionesPermitidas);
+        });
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Conversión de Fechas Excel                        */
+/* -------------------------------------------------------------------------- */
 if (!function_exists('parseFechaExcel')) {
     function parseFechaExcel($fecha)
     {
@@ -15,41 +34,150 @@ if (!function_exists('parseFechaExcel')) {
         }
     }
 }
-if (!function_exists('extraerCodigoDesdeColumna')) {
-    function extraerCodigoDesdeColumna(array &$rows, array $headers, string $nombreColumna)
+
+/* -------------------------------------------------------------------------- */
+/*                Conversión de fechas con validación por mes                */
+/* -------------------------------------------------------------------------- */
+if (!function_exists('conversionDateExcelMonth')) {
+    function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $mesesEsperados = 1)
     {
-        $indice = array_search(strtolower($nombreColumna), array_map('strtolower', $headers));
+        try {
+            $fechaPublicacion = parseFechaExcel($fecha_publicacion);
+            $fechaDesfijacion = parseFechaExcel($fecha_desfijacion);
 
-        if ($indice !== false) {
-            foreach ($rows as &$fila) {
-                if (isset($fila[$indice])) {
-                    $valorOriginal = trim($fila[$indice]);
-                    $codigo = strpos($valorOriginal, '-') !== false
-                        ? explode('-', $valorOriginal)[0]
-                        : $valorOriginal;
-
-                    $fila[$indice] = $codigo;
-                }
+            if (!$fechaPublicacion || !$fechaDesfijacion) {
+                return ["Error al interpretar fechas."];
             }
-            unset($fila); // buena práctica
+
+            $fechaEsperada = $fechaPublicacion->copy()->addMonths($mesesEsperados);
+
+            if ($fechaDesfijacion->lt($fechaPublicacion) || $fechaDesfijacion->gt($fechaEsperada)) {
+                Log::warning("Fecha de desfijación fuera del rango esperado: {$fechaDesfijacion->toDateString()}");
+                return ["La fecha de desfijación debe estar entre {$fechaPublicacion->toDateString()} y {$fechaEsperada->toDateString()}."];
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            Log::error("Error al validar fechas por mes: " . $e->getMessage());
+            return ["Error al validar fechas: " . $e->getMessage()];
         }
     }
 }
-if (!function_exists('normalizar')) {
-    function normalizar($cadena) {
-        // Convertir a minúsculas para evitar diferencias en mayúsculas
-        $cadena = mb_strtolower($cadena, 'UTF-8');
 
-        // Reemplazar caracteres con tildes y la "ñ"
+/* -------------------------------------------------------------------------- */
+/*               Conversión de fechas con validación por días                */
+/* -------------------------------------------------------------------------- */
+if (!function_exists('conversionDateExcelDay')) {
+    function conversionDateExcelDay($fechaPublicacion, $fechaDesfijacion, $diasEsperados = 5)
+    {
+        try {
+            $fechaPublicacion = parseFechaExcel($fechaPublicacion);
+            $fechaDesfijacion = parseFechaExcel($fechaDesfijacion);
+
+            if (!$fechaPublicacion || !$fechaDesfijacion) {
+                return ["Error al interpretar fechas."];
+            }
+
+            if ($fechaDesfijacion->diffInDays($fechaPublicacion) !== $diasEsperados) {
+                return ["La desfijación entre fechas no es de {$diasEsperados} días."];
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            Log::error("Error al validar fechas por día: " . $e->getMessage());
+            return ["Error al procesar fechas: " . $e->getMessage()];
+        }
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                      Normalización de Cadenas                             */
+/* -------------------------------------------------------------------------- */
+if (!function_exists('normalizar')) {
+    function normalizar($cadena)
+    {
+        $cadena = mb_strtolower($cadena, 'UTF-8');
         $buscar = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'];
         $reemplazar = ['a', 'e', 'i', 'o', 'u', 'u', 'n'];
         $cadena = str_replace($buscar, $reemplazar, $cadena);
-
-        // Eliminar cualquier otro carácter no alfanumérico excepto espacios
         return preg_replace('/[^a-z0-9 ]/', '', $cadena);
     }
 }
 
+/* -------------------------------------------------------------------------- */
+/*         Convertir fechas en array (formato n/j/Y para excel)              */
+/* -------------------------------------------------------------------------- */
+if (!function_exists('convertirFechasEnArray')) {
+    function convertirFechasEnArray(array $data): array
+    {
+        return array_map(function ($row) {
+            foreach (['fecha_publicacion', 'fecha_desfijacion'] as $campo) {
+                if (isset($row[$campo]) && is_numeric($row[$campo])) {
+                    try {
+                        $row[$campo] = Carbon::instance(Date::excelToDateTimeObject($row[$campo]))->format('n/j/Y');
+                    } catch (\Exception $e) {
+                        $row[$campo] = null;
+                    }
+                }
+            }
+            return $row;
+        }, $data);
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*         Extraer Código desde Columna (tipo "1234 - Nombre")               */
+/* -------------------------------------------------------------------------- */
+if (!function_exists('extraerCodigoDesdeColumna')) {
+    function extraerCodigoDesdeColumna(array &$rows, array $headers, string $nombreColumna)
+    {
+        $indice = array_search(strtolower($nombreColumna), array_map('strtolower', $headers));
+        if ($indice === false) return;
+
+        foreach ($rows as &$fila) {
+            if (isset($fila[$indice])) {
+                $valor = trim($fila[$indice]);
+                $fila[$indice] = explode('-', $valor)[0];
+            }
+        }
+        unset($fila);
+    }
+}
+/* -------------------------------------------------------------------------- */
+/*                      Valida si el archivo es PDF                           */
+/* -------------------------------------------------------------------------- */
+if (!function_exists('esPDFValido')) {
+    function esPDFValido($contenido, $rutaCarpetaUsuario)
+    {
+        // dd(['archivos'=>$contenido, 'rutaCarpetaUsuario'=>$rutaCarpetaUsuario]);
+        $archivosPdf = array_map(
+            fn($pdf) => strtolower(trim($pdf)),
+            array_filter($contenido, function ($archivo) use ($rutaCarpetaUsuario) {
+                return is_file($rutaCarpetaUsuario . '/' . $archivo) && strtolower(pathinfo($archivo, PATHINFO_EXTENSION)) === 'pdf';
+            })
+        );
+
+        return $archivosPdf;
+    }
+} 
+
+    /* -------------------------------------------------------------------------- */
+    /*          Valida si el archivo es Excel se encuentra abierto                */
+    /* -------------------------------------------------------------------------- */
+    if (!function_exists('estaBloqueado')) {
+
+        function estaBloqueado($rutaArchivo)
+        {
+            $handle = @fopen($rutaArchivo, 'r+');
+
+            if ($handle === false) {
+                return true; // No se puede abrir: probablemente está bloqueado o en uso
+            }
+
+            fclose($handle);
+            return false; // El archivo está libre
+        }
+    }
 // if (!function_exists('conversor')) {
 //     function conversor($data, $columnas_no_vacias) {
 //         return $data = array_map(function ($fila) use ($columnas_no_vacias) {
