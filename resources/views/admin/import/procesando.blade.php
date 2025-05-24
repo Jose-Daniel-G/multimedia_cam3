@@ -53,7 +53,7 @@
                                 @php $hayEnCola = true; @endphp
                                 <tr>
                                     <td>{{ $row['id_plantilla'] }}</td>
-                                    <td>{{ $row['file'] }}</td>
+                                    <td>{{ $row['archivo'] }}</td>
                                     <td>{{ $row['n_registros'] }}</td>
                                     <td>{{ $row['n_pdfs'] }}</td>
                                     <td>

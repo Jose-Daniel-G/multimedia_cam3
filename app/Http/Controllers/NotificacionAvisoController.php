@@ -351,9 +351,9 @@ class NotificacionAvisoController extends Controller
         ];
     }
 
-    public function files_plantilla($fileOrigin = true)
+    public function files_plantilla()
     {
-        $resultado = $this->files_plantilla_sin_cache($fileOrigin);
+        $resultado = $this->files_plantilla_sin_cache();
 
         if (is_array($resultado) && !isset($resultado['abierto'])) {
             Cache::put("archivos_excel_{$this->username}", $resultado, 10);
@@ -362,29 +362,12 @@ class NotificacionAvisoController extends Controller
         return $resultado;
     }
 
-    public function files_plantilla_sin_cache($fileOrigin)
+    public function files_plantilla_sin_cache()
     {
-        Log::debug("fileOrigin: $fileOrigin");
 
         // Preparar ruta según el origen
-        if ($fileOrigin) {
-            $files = Storage::disk('public')->files("users/{$this->username}");
-            $rutaCarpetaUsuario = $this->baseDir . "/users/{$this->username}";
-            Log::debug("route 1: " . json_encode($files));
-            Log::debug("quemado: users/{$this->username}");
-        } else {
-            // Si organismo es array en vez de objeto, se corrige
-            $nombreOrganismo = is_object($this->organismo)
-                ? $this->organismo->depe_nomb
-                : ($this->organismo['depe_nomb'] ?? 'organismo_desconocido');
-
-            $folder = Str::snake($nombreOrganismo);
-            $files = Storage::disk('public')->files("pdfs/{$folder}/{$this->username}");
-            $rutaCarpetaUsuario = $this->baseDir . "/pdfs/{$folder}/{$this->username}";
-
-            Log::debug("route 2: " . json_encode($files));
-            Log::debug("quemado: pdfs/{$folder}/{$this->username}");
-        }
+        $files = Storage::disk('public')->files("users/{$this->username}");
+        $rutaCarpetaUsuario = $this->baseDir . "/users/{$this->username}";
 
         $excelRawFiles = collect($files)
             ->filter(fn($file) => in_array(pathinfo($file, PATHINFO_EXTENSION), ['xlsx', 'xls', 'csv']))
@@ -449,71 +432,32 @@ class NotificacionAvisoController extends Controller
         return response()->json(array_values($this->armarListaConProgreso(false)));
     }
 
-    protected function armarListaConProgreso($fileOrigin)
+    protected function armarListaConProgreso()
     {
-        $excelFiles = $this->files_plantilla($fileOrigin);
-
-        // Traer todos los eventos relevantes de una vez
-        $eventos = DB::table('evento_auditoria')->whereIn('estado_auditoria', ['E', 'P'])
-            ->orderByDesc('fecha_auditoria')->get();
-
-        Log::debug("Evento: " . $eventos);
-
-        foreach ($excelFiles as &$archivo) {
-            Log::debug("Excel_files: " . $archivo['file']);
-
-            $eventoEncontrado = null;
-            $datosEvento = [];
-
-            foreach ($eventos as $evento) {
-                // Primer decode
+        return DB::table('evento_auditoria')
+            ->whereIn('estado_auditoria', ['E', 'P'])
+            ->orderByDesc('fecha_auditoria')
+            ->get()
+            ->map(function ($evento) {
                 $datos = json_decode($evento->datos_adicionales ?? '{}', true);
 
-                // Si quedó como string, hacer segundo decode
-                if (is_string($datos)) {
-                    $datos = json_decode($datos, true);
-                }
-
-                // Validar errores de json_decode
-                if (json_last_error() !== JSON_ERROR_NONE || !is_array($datos)) {
-                    Log::debug("JSON inválido: " . ($evento->datos_adicionales ?? 'nulo'));
-                    continue;
-                }
-
-                Log::debug("Datos del evento: " . json_encode($datos));
-
-                $archivoEvento = $datos['archivo'] ?? null;
-                Log::debug("Comparando con evento: archivo=" . $archivoEvento);
-
-                if ($archivoEvento === $archivo['file']) {
-                    $eventoEncontrado = $evento;
-                    $datosEvento = $datos;
-                    break;
-                }
-            }
-
-            if ($eventoEncontrado) {
-                $porcentaje = isset($datosEvento['progreso']) ? (int) $datosEvento['progreso'] : 0;
-
-                $archivo['porcentaje'] = min($porcentaje, 100);
-                $archivo['procesados'] = $porcentaje;
-                $archivo['n_registros'] = $eventoEncontrado->cont_registros;
-                $archivo['n_pdfs'] = $datosEvento['pdfsAsociados'] ?? 0;
-                $archivo['estado_codigo'] = $eventoEncontrado->estado_auditoria;
-                $archivo['estado'] = match ($eventoEncontrado->estado_auditoria) {
-                    'P' => 'Publicado',
-                    'F' => 'Fallido',
-                    default => 'En proceso',
-                };
-                $archivo['observaciones'] = $datosEvento['observaciones'] ?? '';
-                $archivo['fecha'] = $eventoEncontrado->fecha_auditoria;
-                $archivo['id_plantilla'] = $datosEvento['tipo_plantilla'];
-            } else {
-                $archivo['estado_codigo'] = null;
-            }
-        }
-
-        return array_filter($excelFiles, fn($a) => in_array($a['estado_codigo'], ['E', 'P']));
+                return [
+                    'archivo' => $datos['archivo'] ?? 'Desconocido',
+                    'porcentaje' => min((int) ($datos['progreso'] ?? 0), 100),
+                    'procesados' => $datos['progreso'] ?? 0,
+                    'n_registros' => $evento->cont_registros,
+                    'n_pdfs' => $datos['pdfsAsociados'] ?? 0,
+                    'estado_codigo' => $evento->estado_auditoria,
+                    'estado' => match ($evento->estado_auditoria) {
+                        'P' => 'Publicado',
+                        'F' => 'Fallido',
+                        default => 'En proceso',
+                    },
+                    'observaciones' => $datos['observaciones'] ?? '',
+                    'fecha' => $evento->fecha_auditoria,
+                    'id_plantilla' => $evento->id_plantilla ?? $datos['tipo_plantilla'] ?? null,
+                ];
+            })->toArray();
     }
 
 
