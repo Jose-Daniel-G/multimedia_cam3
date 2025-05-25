@@ -1,6 +1,7 @@
 <?php
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
@@ -159,25 +160,77 @@ if (!function_exists('esPDFValido')) {
 
         return $archivosPdf;
     }
-} 
+}
 
-    /* -------------------------------------------------------------------------- */
-    /*          Valida si el archivo es Excel se encuentra abierto                */
-    /* -------------------------------------------------------------------------- */
-    if (!function_exists('estaBloqueado')) {
+/* -------------------------------------------------------------------------- */
+/*          Valida si el archivo es Excel se encuentra abierto                */
+/* -------------------------------------------------------------------------- */
+if (!function_exists('estaBloqueado')) {
 
-        function estaBloqueado($rutaArchivo)
-        {
-            $handle = @fopen($rutaArchivo, 'r+');
+    function estaBloqueado($rutaArchivo)
+    {
+        $handle = @fopen($rutaArchivo, 'r+');
 
-            if ($handle === false) {
-                return true; // No se puede abrir: probablemente está bloqueado o en uso
+        if ($handle === false) {
+            return true; // No se puede abrir: probablemente está bloqueado o en uso
+        }
+
+        fclose($handle);
+        return false; // El archivo está libre
+    }
+}
+/* -------------------------------------------------------------------------- */
+/*             Verifica obtener progreso Carga de archivo                     */
+/* -------------------------------------------------------------------------- */
+function obtenerProgresoCarga()
+{
+    // $inicio = microtime(true);
+
+    $progreso = DB::table('evento_auditoria')
+        ->whereIn('estado_auditoria', ['E'])
+        ->orderByDesc('fecha_auditoria')
+        ->get()
+        ->map(function ($evento) {
+            $datos_json = $evento->datos_adicionales ?? '{}';
+            $datos = json_decode($datos_json, true);
+            Log::warning('Datos ', ['datos_adicionales' => $datos]);
+
+            // Si el resultado es string (porque es JSON doble), decodifica otra vez
+            if (is_string($datos)) {
+                $datos = json_decode($datos, true);
+            } else if (is_array($datos)) {
+                $datos = $datos;
+            } else {
+                $datos = [];
             }
 
-            fclose($handle);
-            return false; // El archivo está libre
-        }
-    }
+            // Validar y normalizar el campo progreso
+            $progreso_raw = $datos['progreso'] ?? 0;
+            $progreso_float = is_numeric($progreso_raw) ? floatval($progreso_raw) : 0;
+            $progreso = min(max(0, (int) $progreso_float), 100);
+
+            return [
+                'archivo' => $datos['archivo'] ?? 'Desconocido',
+                'progreso' => $progreso,
+                'n_registros' => $evento->cont_registros,
+                'n_pdfs' => $datos['pdfsAsociados'] ?? 0,
+                'estado_codigo' => $evento->estado_auditoria,
+                'estado' => 'En proceso', // ya está filtrado
+                'observaciones' => $datos['observaciones'] ?? '',
+                'fecha' => $evento->fecha_auditoria,
+                'id_plantilla' => $evento->id_plantilla ?? $datos['tipo_plantilla'] ?? null,
+            ];
+        })->toArray();
+    // sleep(2); // <- Simula una pausa de 2 segundos
+
+    // Log::debug('Tiempo en obtener eventos: ' . (microtime(true) - $inicio));
+    Log::info('Progreso de carga obtenido', [
+        'progreso log' => $progreso,
+    ]);
+
+    return $progreso;
+}
+
 // if (!function_exists('conversor')) {
 //     function conversor($data, $columnas_no_vacias) {
 //         return $data = array_map(function ($fila) use ($columnas_no_vacias) {

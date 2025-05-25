@@ -421,7 +421,7 @@ class NotificacionAvisoController extends Controller
     public function procesandoView()
     {
         $organismo = $this->organismo;
-        $excelFiles = $this->armarListaConProgreso(false);
+        $excelFiles = obtenerProgresoCarga();
         $excelCount = count($excelFiles);
 
         return view('admin.import.procesando', compact('organismo', 'excelFiles', 'excelCount'));
@@ -429,35 +429,7 @@ class NotificacionAvisoController extends Controller
 
     public function jsonProgreso()
     {
-        return response()->json(array_values($this->armarListaConProgreso(false)));
-    }
-
-    protected function armarListaConProgreso()
-    {
-        return DB::table('evento_auditoria')
-            ->whereIn('estado_auditoria', ['E', 'P'])
-            ->orderByDesc('fecha_auditoria')
-            ->get()
-            ->map(function ($evento) {
-                $datos = json_decode($evento->datos_adicionales ?? '{}', true);
-
-                return [
-                    'archivo' => $datos['archivo'] ?? 'Desconocido',
-                    'porcentaje' => min((int) ($datos['progreso'] ?? 0), 100),
-                    'procesados' => $datos['progreso'] ?? 0,
-                    'n_registros' => $evento->cont_registros,
-                    'n_pdfs' => $datos['pdfsAsociados'] ?? 0,
-                    'estado_codigo' => $evento->estado_auditoria,
-                    'estado' => match ($evento->estado_auditoria) {
-                        'P' => 'Publicado',
-                        'F' => 'Fallido',
-                        default => 'En proceso',
-                    },
-                    'observaciones' => $datos['observaciones'] ?? '',
-                    'fecha' => $evento->fecha_auditoria,
-                    'id_plantilla' => $evento->id_plantilla ?? $datos['tipo_plantilla'] ?? null,
-                ];
-            })->toArray();
+        return response()->json(array_values(obtenerProgresoCarga()));
     }
 
 
