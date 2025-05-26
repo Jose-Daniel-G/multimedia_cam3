@@ -9,6 +9,21 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 /*                        Validación de Archivos                              */
 /* -------------------------------------------------------------------------- */
 
+if (!function_exists('nombresValidos')) {
+    function nombresValidos($rows, $indiceColumna)
+    {
+        return array_values(array_filter(
+            array_map(function ($fila) use ($indiceColumna) {
+                return isset($fila[$indiceColumna]) ? strtolower(trim($fila[$indiceColumna])) : '';
+            }, $rows),
+            fn($h) => $h !== ''
+        ));
+    }
+}
+/* -------------------------------------------------------------------------- */
+/*                        Validación de Archivos                              */
+/* -------------------------------------------------------------------------- */
+
 if (!function_exists('esArchivoValido')) {
     function esArchivoValido($contenido, $rutaCarpetaUsuario)
     {
@@ -222,7 +237,6 @@ function obtenerProgresoCarga()
             ];
         })->toArray();
     // sleep(2); // <- Simula una pausa de 2 segundos
-
     // Log::debug('Tiempo en obtener eventos: ' . (microtime(true) - $inicio));
     Log::info('Progreso de carga obtenido', [
         'progreso log' => $progreso,

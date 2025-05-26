@@ -3,25 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\NotificacionAviso;
-use App\Imports\NotificacionAvisoImport;
 use App\Jobs\ImportarNotificaciones;
 use App\Models\EventoAuditoria;
 use App\Models\Organismo;
 use App\Models\TipoPlantilla;
-use Carbon\Carbon;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use League\Csv\Reader;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Illuminate\Support\Facades\Validator;
+use Exception;
 
 class NotificacionAvisoController extends Controller
 {
@@ -41,10 +36,10 @@ class NotificacionAvisoController extends Controller
 
         // Middleware para inicializar propiedades del usuario
         $this->middleware(function ($request, $next) {
-            $this->usuario = Auth::user();
+            $this->usuario   = Auth::user();
             $this->organismo = Organismo::find($this->usuario->organismo_id);
-            $this->username = strtok($this->usuario->email, '@');
-            $this->baseDir = storage_path('app/public');
+            $this->username  = strtok($this->usuario->email, '@');
+            $this->baseDir   = storage_path('app/public');
             $this->rutaCarpetaUsuario = $this->baseDir . '/users/' . $this->username;
 
             return $next($request);
@@ -72,13 +67,11 @@ class NotificacionAvisoController extends Controller
             }
 
             $archivo = $datos['archivo'] ?? null;
-            if (!$archivo) {
-                continue;
-            }
+            if (!$archivo) {continue;}
 
             $procesados = $evento->cont_registros;
-            $total = $procesados; // No se guarda n_registros en los datos, así que lo igualamos
-            $porcentaje = 100; // Como el estado es 'P', asumimos 100%
+            $total      = $procesados; // No se guarda n_registros en los datos, así que lo igualamos
+            $porcentaje = 100;         // Como el estado es 'P', asumimos 100%
 
             $excelFiles[] = [
                 'file' => $archivo,
@@ -95,7 +88,6 @@ class NotificacionAvisoController extends Controller
         }
 
         $excelCount = count($excelFiles);
-
         return view('admin.import.index', compact('organismo', 'excelFiles', 'excelCount'));
     }
 
@@ -299,65 +291,59 @@ class NotificacionAvisoController extends Controller
 
     public function processFile($rutaArchivoExcel, $archivosPdf)
     {
-        $sheet_file = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
+        $spreadsheet = IOFactory::load($rutaArchivoExcel);
+        $sheet = $spreadsheet->getSheet(0); // Forzar la primera hoja (índice 0)
+        $sheetData = $sheet->toArray();     // Obtener todos los datos de la hoja como array
 
-        if (empty($sheet_file) || !isset($sheet_file[0][1])) {
-            return ['error' => '❌ El archivo está vacío o mal formado.'];
-        }
+        // Validación básica
+        if (empty($sheetData) || !isset($sheetData[0][1])) {return ['error' => '❌ El archivo está vacío o mal formado.'];}
+        // Validar que exista fila de encabezados (fila 4)
+        if (!isset($sheetData[3])) {return ['error' => '❌ No se encontró la fila de headers (fila 4) en la hoja.'];}
 
-        $registros = $sheet_file[1][1];
-        $pdfsAsociados = $sheet_file[2][1];
-        log::debug("registros: " . json_encode($registros) . " pdfsAsociados:" . json_encode($pdfsAsociados));
-        if ($registros != $pdfsAsociados) {
-            return ['error' => '❌ El número de registros no coincide con la cantidad de archivos pdf.'];
-        }
+        // Lectura de celdas específicas
+        $id_plantilla_raw = $sheet->getCell('B1')->getValue();
 
+        $id_plantilla = substr((string)$id_plantilla_raw, 0, 1);
+        $headers      = array_map('trim', $sheetData[3]);
+        $n_registros  = $sheet->getCell('B2')->getCalculatedValue();
+        $n_pdfs       = $sheet->getCell('B3')->getCalculatedValue();
 
+        Log::debug("registros: " . json_encode($n_registros) . " pdfsAsociados: " . json_encode($n_pdfs));
 
-        log::debug("sheet_file: " . json_encode($sheet_file[0][1]));
-        $id_plantilla = substr($sheet_file[0][1], 0, 1);
+        if ($n_registros != $n_pdfs) {return ['error' => '❌ El número de registros no coincide con la cantidad de archivos pdf.'];}
+
         $columnaNombre = in_array($id_plantilla, [1, 2]) ? 'NO_ACT_TRA' : 'objeto_contrato';
 
-        // Log::debug("file: $rutaArchivoExcel");
-        Log::debug("Plantilla detectada: $id_plantilla");
-
-        if (!isset($sheet_file[3])) {
-            return ['error' => '❌ No se encontró la fila de headers (fila 4) en la hoja.'];
-        }
-        $headers = array_map('trim', $sheet_file[3]);
-        // $datos = array_slice($sheet_file, 4);
-        $rows = array_filter(array_slice($sheet_file, 4), fn($fila)
-        => is_array($fila) && count(array_filter($fila)) > 0); //Validar que las filas no estén vacías antes de procesarlas.
-        //    Log::debug("Datos procesados: ".json_encode($rows));
+        // Obtener datos desde la fila 5 en adelante (índice 4)
+        $rows = array_filter(array_slice($sheetData, 4),
+            fn($fila) => is_array($fila) && count(array_filter($fila)) > 0
+        );
 
         $indiceColumna = array_search($columnaNombre, $headers);
 
-        $nombresValidos = array_values(array_filter(
-            array_map(function ($fila) use ($indiceColumna) {
-                return isset($fila[$indiceColumna]) ? strtolower(trim($fila[$indiceColumna])) : '';
-            }, $rows),
-            fn($h) => $h !== ''
-        ));
+        $nombresValidos = nombresValidos($rows, $indiceColumna);;
 
         extraerCodigoDesdeColumna($rows, $headers, 'tipo_acto_tramite');
         extraerCodigoDesdeColumna($rows, $headers, 'tipo_impuesto');
 
-
+        // Limpiar nombres de archivos PDF (sin extensión)
         $archivosPdf = array_map(function ($archivo) {
             return preg_replace('/(\.pdf)+$/i', '', $archivo);
         }, $archivosPdf);
 
         $pdfsFaltantes = array_filter($nombresValidos, fn($nombre) => !in_array($nombre, $archivosPdf));
         $pdfNoEncontrados = array_filter($archivosPdf, fn($pdf) => !in_array($pdf, $nombresValidos));
+
         return [
             'id_plantilla' => $id_plantilla,
             'pdfsFaltantes' => $pdfsFaltantes,
             'pdfNoEncontrados' => $pdfNoEncontrados,
-            'pdfsAsociados' => $pdfsAsociados,
+            'pdfsAsociados' => $n_pdfs,
             'headers' => $headers,
             'rows' => $rows,
         ];
     }
+
 
     public function files_plantilla()
     {
@@ -396,22 +382,24 @@ class NotificacionAvisoController extends Controller
             }
 
             try {
-                $dataRaw = Excel::toArray([], $rutaArchivoExcel)[0] ?? [];
+                $spreadsheet = IOFactory::load($rutaArchivoExcel);
+                $sheet = $spreadsheet->getSheet(0);
 
-                if (isset($dataRaw[0][1])) {
-                    $id_plantilla = substr($dataRaw[0][1], 0, 1);
-                    $plantilla = TipoPlantilla::find($id_plantilla);
-                    $n_registros = $dataRaw[1][1] ?? 0;
-                    $n_pdfs = $dataRaw[2][1] ?? 0;
+                $id_plantilla_raw = $sheet->getCell('B1')->getValue();
+                $id_plantilla = substr((string)$id_plantilla_raw, 0, 1);
 
-                    $excelFiles[] = [
-                        'file' => $fileExcel,
-                        'n_registros' => $n_registros,
-                        'n_pdfs' => $n_pdfs,
-                        'id_plantilla' => $id_plantilla,
-                        'plantilla' => $plantilla?->nombre_plantilla ?? 'Desconocida',
-                    ];
-                }
+                $n_registros = $sheet->getCell('B2')->getCalculatedValue();
+                $n_pdfs = $sheet->getCell('B3')->getCalculatedValue();
+
+                $plantilla = TipoPlantilla::find($id_plantilla);
+
+                $excelFiles[] = [
+                    'file' => $fileExcel,
+                    'n_registros' => is_numeric($n_registros) ? (int)$n_registros : 0,
+                    'n_pdfs' => is_numeric($n_pdfs) ? (int)$n_pdfs : 0,
+                    'id_plantilla' => $id_plantilla,
+                    'plantilla' => $plantilla?->nombre_plantilla ?? 'Desconocida',
+                ];
             } catch (\Exception $e) {
                 // 🔍 Registro manual del error en la tabla activity_log
                 activity()
