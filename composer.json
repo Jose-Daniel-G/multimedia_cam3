@@ -18,6 +18,7 @@
         "maatwebsite/excel": "^3.1",
         "phpoffice/phpspreadsheet": "^1.29",
         "rappasoft/laravel-authentication-log": "^4.0",
+        "spatie/laravel-activitylog": "^4.10",
         "spatie/laravel-permission": "^6.9",
         "torann/geoip": "^3.0"
     },

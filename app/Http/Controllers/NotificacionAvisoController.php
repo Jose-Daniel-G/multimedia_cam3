@@ -60,7 +60,7 @@ class NotificacionAvisoController extends Controller
         $eventos = DB::table('evento_auditoria')
             ->where('idusuario', auth()->id())
             ->where('estado_auditoria', 'P')
-            ->orderByDesc('created_at')
+            ->orderByDesc('fecha_auditoria')
             ->get();
 
         $excelFiles = [];
@@ -255,16 +255,15 @@ class NotificacionAvisoController extends Controller
                 'id_plantilla' => $id_plantilla,
                 'cont_registros' => 0,
                 'estado_auditoria' => 'E',
-                'datos_adicionales' => json_encode([
+                'datos_adicionales' => [
                     'organismo_id' => $organismo->id,
                     'archivo' => $archivoExcel,
                     'archivo_cargado' => true,
                     'tipo_plantilla' => $id_plantilla,
-                    'pdfsAsociados' => $pdfsAsociados
-                ]),
+                    'pdfsAsociados' => $pdfsAsociados,
+                ],
                 'fecha_auditoria' => now(),
             ]);
-
             ImportarNotificaciones::dispatch(
                 $data,
                 $publi_notificacion,
@@ -340,7 +339,6 @@ class NotificacionAvisoController extends Controller
 
         $pdfsFaltantes = array_filter($nombresValidos, fn($nombre) => !in_array($nombre, $archivosPdf));
         $pdfNoEncontrados = array_filter($archivosPdf, fn($pdf) => !in_array($pdf, $nombresValidos));
-
         return [
             'id_plantilla' => $id_plantilla,
             'pdfsFaltantes' => $pdfsFaltantes,
@@ -364,7 +362,6 @@ class NotificacionAvisoController extends Controller
 
     public function files_plantilla_sin_cache()
     {
-
         // Preparar ruta según el origen
         $files = Storage::disk('public')->files("users/{$this->username}");
         $rutaCarpetaUsuario = $this->baseDir . "/users/{$this->username}";
@@ -416,7 +413,6 @@ class NotificacionAvisoController extends Controller
 
         return $excelFiles;
     }
-
 
     public function procesandoView()
     {

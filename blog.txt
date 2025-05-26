@@ -1,6 +1,4 @@
 
-
-
 php artisan make:model Post -m
 php artisan make:model Category -m
 php artisan make:factory PostFactory
@@ -9,34 +7,6 @@ php artisan make:factory TagFactory
 php artisan make:factory ImageFactory
 php artisan make:seeder UserSeeder
 php artisan make:seeder PostSeeder 
-
-            $data = array_map(function ($row) use ($headers) {
-                $assoc = array_combine($headers, $row);
-                if (isset($assoc['id_predio'])) {
-                    $assoc['id_predio'] = (int)ltrim($assoc['id_predio'], '0');
-                }
-                if (isset($assoc['cedula_identificacion'])) {
-                    $assoc['cedula_identificacion'] = (int)ltrim($assoc['cedula_identificacion'], '0');
-                }
-                if (isset($assoc['liquidacion'])) {
-                    $assoc['liquidacion'] = (int)ltrim($assoc['liquidacion'], '0');
-                }
-    
-                if (isset($assoc['fecha_publicacion']) && is_numeric($assoc['fecha_publicacion'])) {
-                    $assoc['fecha_publicacion'] = \Carbon\Carbon::instance(
-                        Date::excelToDateTimeObject($assoc['fecha_publicacion'])
-                    )->format('n/j/Y');
-                }
-    
-                if (isset($assoc['fecha_desfijacion']) && is_numeric($assoc['fecha_desfijacion'])) {
-                    $assoc['fecha_desfijacion'] = \Carbon\Carbon::instance(
-                        Date::excelToDateTimeObject($assoc['fecha_desfijacion'])
-                    )->format('n/j/Y');
-                }
-    
-                return $assoc;
-            }, $rows);
-
 
 <!-- 
 ##posts
@@ -101,3 +71,6 @@ De esa forma crea el controlador, y le asigna el modelo Category, entonces ya in
             }
 
         });
+
+TRUNCATE TABLE evento_auditoria; 
+TRUNCATE TABLE notificaciones_avisos; 

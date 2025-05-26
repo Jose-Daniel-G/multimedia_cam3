@@ -340,6 +340,15 @@ return [
             ],
         ],
         // ['header' => 'ADMINISTRADOR'],
+        // ['header' => 'Auditodria'],
+        // [
+        //     'text' => 'Auditoria',
+        //     'route' => 'admin.auditoria',
+        //     'icon' => 'fa-solid fa-shield',
+        //     'label'   => '6',
+        //     'label_color' => 'success', // Color verde
+        // ],
+        // ['header' => 'ADMINISTRADOR'],
         // ['header' => 'OPCIONES DE BLOG'],
 
         // [
