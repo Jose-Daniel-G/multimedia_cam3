@@ -283,6 +283,16 @@ class NotificacionAvisoController extends Controller
             return response()->json(['success' => 'Archivo en proceso de importación.', 'info' => $id_plantilla]);
         } catch (Exception $e) {
             DB::rollBack();
+            // 🔍 Registro manual del error en la tabla activity_log
+            activity()
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'archivo' => $archivoExcel,
+                    'organismo_id' => $organismo->id,
+                    'mensaje' => $e->getMessage(),
+                    'archivo_path' => $rutaArchivoExcel ?? null
+                ])
+                ->log('❌ Error durante la carga del archivo');
             return response()->json(['error' => 'Error al iniciar la importación: ' . $e->getMessage()], 500);
         }
     }
@@ -403,6 +413,16 @@ class NotificacionAvisoController extends Controller
                     ];
                 }
             } catch (\Exception $e) {
+                // 🔍 Registro manual del error en la tabla activity_log
+                activity()
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'archivo' => $fileExcel,
+                        'organismo_id' => $this->organismo->id,
+                        'mensaje' => $e->getMessage(),
+                        'archivo_path' => $rutaArchivoExcel ?? null
+                    ])
+                    ->log('❌ "Error procesando');
                 Log::error("Error procesando $fileExcel: " . $e->getMessage());
             }
         }
