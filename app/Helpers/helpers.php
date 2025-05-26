@@ -199,7 +199,7 @@ if (!function_exists('estaBloqueado')) {
 /* -------------------------------------------------------------------------- */
 function obtenerProgresoCarga()
 {
-    // $inicio = microtime(true);
+    $inicio = microtime(true);
 
     $progreso = DB::table('evento_auditoria')
         ->whereIn('estado_auditoria', ['E'])
@@ -236,8 +236,8 @@ function obtenerProgresoCarga()
                 'id_plantilla' => $evento->id_plantilla ?? $datos['tipo_plantilla'] ?? null,
             ];
         })->toArray();
-    // sleep(2); // <- Simula una pausa de 2 segundos
-    // Log::debug('Tiempo en obtener eventos: ' . (microtime(true) - $inicio));
+    sleep(2); // <- Simula una pausa de 2 segundos
+    Log::debug('Tiempo en obtener eventos: ' . (microtime(true) - $inicio));
     Log::info('Progreso de carga obtenido', [
         'progreso log' => $progreso,
     ]);

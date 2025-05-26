@@ -70,7 +70,9 @@
                                     </td>
                                     <td> {{ $row['estado'] }}</td>
                                     <td> {{  $row['fecha'] }} </td>
-                                    <td> <i class="fa-solid fa-trash text-danger" id="delete" aria-hidden="true"></i>
+                                    <td> 
+                                        <i class="fa-solid fa-trash text-danger" id="delete" aria-hidden="true"></i>
+                                        <i class="bi bi-download"></i>
                                     </td>
                                 </tr>
                             @endforeach

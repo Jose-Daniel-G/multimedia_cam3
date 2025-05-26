@@ -54,7 +54,7 @@ class NotificacionAvisoController extends Controller
         // Traer solo eventos publicados por el usuario autenticado
         $eventos = DB::table('evento_auditoria')
             ->where('idusuario', auth()->id())
-            ->where('estado_auditoria', 'P')
+            ->where('estado_auditoria', ['P', 'F']) // 'P' para publicados, 'F' para fallidos
             ->orderByDesc('fecha_auditoria')
             ->get();
 
