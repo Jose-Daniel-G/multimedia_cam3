@@ -98,3 +98,5 @@ De esa forma crea el controlador, y le asigna el modelo Category, entonces ya in
             }
 
         });
+
+        Remove-Item -Recurse -Force vendor, composer.lock

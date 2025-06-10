@@ -138,3 +138,6 @@ composer require rappasoft/laravel-authentication-log
 #### Guarda: usuario que hizo el cambio, antes/después, IP, URL, user agent
 composer require owen-it/laravel-auditing
 php artisan vendor:publish --provider="OwenIt\Auditing\AuditingServiceProvider" --tag=config
+
+
+Remove-Item -Recurse -Force vendor, composer.lock
