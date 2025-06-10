@@ -43,7 +43,7 @@ php artisan config:clear
 php artisan view:clear
 php artisan route:clear
 php artisan view:clear
-php artisan clear-compiled
+php artisan optimize:clear
 
 php artisan queue:flush
 php artisan queue:restart
@@ -138,3 +138,5 @@ composer require rappasoft/laravel-authentication-log
 #### Guarda: usuario que hizo el cambio, antes/después, IP, URL, user agent
 composer require owen-it/laravel-auditing
 php artisan vendor:publish --provider="OwenIt\Auditing\AuditingServiceProvider" --tag=config
+## AUN NO SE PORQUE NO SE ENCUENTRAN EN ESTE PROYECTO
+php artisan session:table
