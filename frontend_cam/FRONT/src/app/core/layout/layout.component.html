@@ -211,25 +211,18 @@
           <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
             <!-- <li *ngIf="user?.nombreRol === 'administradorWM'" class="nav-item menu-open"> -->
             <a routerLink="/dashboard" class="nav-link active">
-              <i class="nav-icon bi bi-speedometer"></i>
+              <i class="nav-icon fas fa-home"></i>
               <p>Dashboard</p>
             </a>
             <!-- </li> -->
-            <li *ngIf="user?.nombreRol" class="nav-header">COMITE</li>
             <li class="nav-item">
-              <a routerLink="/raciones" class="nav-link">
-                <i class="nav-icon bi bi-clipboard-fill"></i>
-                <p>Raciones</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a routerLink="/raciones" class="nav-link">
+              <a routerLink="/procesar" class="nav-link">
                 <i class="fa-solid fa-spinner"></i>
                 <p>Por procesar</p>
               </a>
             </li>
             <li class="nav-item">
-              <a routerLink="/raciones" class="nav-link">
+              <a routerLink="/procesar/en-proceso" class="nav-link">
                 <i class="fa-solid fa-receipt"></i>
                 <p>En proceso</p>
               </a>
@@ -237,7 +230,7 @@
             <li class="nav-item">
               <a routerLink="/raciones" class="nav-link">
                 <i class="fa-solid fa-clipboard-check"></i>
-                <p>Procesando</p>
+                <p>Procesados</p>
               </a>
             </li>
             <li class="nav-item has-treeview">

@@ -18,6 +18,12 @@ export const routes: Routes = [
         data: { roles: ['administradorWM'] } // Solo el superAdministradorWM puede acceder
       },
       {
+        path: 'procesar',
+        loadChildren: () => import('./modules/procesar/procesar.module').then(m => m.ProcesarModule),
+        canActivate: [AuthGuard],
+        data: { roles: ['administradorWM', 'presidenteCAEC', 'tesoreroCAEC', 'presidenteCV'] }
+      },
+      {
         path: 'raciones',
         loadChildren: () => import('./modules/raciones/raciones.module').then(m => m.RacionesModule),
         canActivate: [AuthGuard],

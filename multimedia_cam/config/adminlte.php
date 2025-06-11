@@ -311,7 +311,7 @@ return [
             'icon' => 'fa-solid fa-receipt',
         ],
         [
-            'text' => 'Procesado',
+            'text' => 'Procesados',
             'route' => 'main.index',
             'icon' => 'fa-solid fa-clipboard-check',
         ],
