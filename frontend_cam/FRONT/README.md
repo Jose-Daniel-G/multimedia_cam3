@@ -11,6 +11,8 @@ npm install apexcharts ng-apexcharts --save //ANGULAR 19
 
 ng add @angular/material ----NO AQUI
 npm install @ngx-translate/core @ngx-translate/http-loader --save ----NO AQUI
+npm install ngx-pagination ----NO AQUI
+npm install ngx-toastr @angular/animations ----NO AQUI
 
 
 

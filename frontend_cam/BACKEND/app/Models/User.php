@@ -2,21 +2,24 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Permission\Traits\HasRoles; //añadida no especificada en el curso
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
+use Rappasoft\LaravelAuthenticationLog\Traits\AuthenticationLoggable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
+    use HasRoles; //añadida no especificada en el curso
+    use HasApiTokens;
+    use HasFactory;
     use HasProfilePhoto;
-    use HasApiTokens, Notifiable, HasFactory, HasRoles;
-    // use TwoFactorAuthenticatable;
+    use Notifiable, AuthenticationLoggable;
+    use TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -27,7 +30,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'organismo_id', //JDGO
     ];
 
     /**
@@ -35,20 +37,23 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    public function getJWTIdentifier()
-    {
-        return $this->getKey();
-    }
-
-    public function getJWTCustomClaims()
-    {
-        return [];
-    }
     protected $hidden = [
         'password',
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
+    ];
+    public function isActive()
+    {
+        return $this->status == 1; // O usa 'is_active' si ese es el nombre del campo
+    }
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
     ];
 
     /**
@@ -59,17 +64,17 @@ class User extends Authenticatable
     protected $appends = [
         'profile_photo_url',
     ];
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public function adminlte_image()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return url($this->profile_photo_url);
+        // return 'https://picsum.photos/300/300';
+    }
+    public function adminlte_desc()
+    {
+        return 'Administradr';
+    }
+    public function adminlte_profile_url()
+    {
+        return url('user/profile');
     }
 }

@@ -1,0 +1,40 @@
+<div class="container-fluid">
+  <app-message [successMessage]="'Permisos cargados'" [errorMessage]="null"></app-message>
+
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Creación</th>
+            <th class="text-center">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let permission of paginatedPermissions">
+            <td>{{ permission.id }}</td>
+            <td>{{ permission.name }}</td>
+            <td>{{ permission.created_at | date: 'dd MMM, y' }}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-dark me-2">Editar</button>
+              <button class="btn btn-sm btn-danger">Eliminar</button>
+            </td>
+          </tr>
+          <tr *ngIf="paginatedPermissions.length === 0">
+            <td colspan="4" class="text-center">No hay permisos registrados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer">
+      <app-pagination
+        [totalItems]="permissions.length"
+        [currentPage]="currentPage"
+        [itemsPerPage]="itemsPerPage"
+        (pageChange)="onPageChange($event)">
+      </app-pagination>
+    </div>
+  </div>
+</div>
