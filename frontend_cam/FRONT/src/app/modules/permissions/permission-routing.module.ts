@@ -2,10 +2,11 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 // import { EnProcesoComponent } from './en-proceso/en-proceso.component';
 import { PermissionsComponent } from './list-permissions/permissions.component';
+import { EditComponent } from './edit/edit.component';
 
 const routes: Routes = [
   { path: '', component: PermissionsComponent },
-  // { path: 'en-proceso', component: EnProcesoComponent,  }
+   { path: ':id/editar', component: EditComponent }
 ];
 
 @NgModule({

@@ -18,7 +18,8 @@
             <td>{{ permission.name }}</td>
             <td>{{ permission.created_at | date: 'dd MMM, y' }}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-dark me-2">Editar</button>
+              <a class="btn btn-sm btn-outline-dark me-2"
+                [routerLink]="['/permissions', permission.id, 'editar']">Editar</a>
               <button class="btn btn-sm btn-danger">Eliminar</button>
             </td>
           </tr>
@@ -29,10 +30,7 @@
       </table>
     </div>
     <div class="card-footer">
-      <app-pagination
-        [totalItems]="permissions.length"
-        [currentPage]="currentPage"
-        [itemsPerPage]="itemsPerPage"
+      <app-pagination [totalItems]="permissions.length" [currentPage]="currentPage" [itemsPerPage]="itemsPerPage"
         (pageChange)="onPageChange($event)">
       </app-pagination>
     </div>
