@@ -2,6 +2,10 @@
   <app-message [successMessage]="'Permisos cargados'" [errorMessage]="null"></app-message>
 
   <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Lista de Permisos</h5>
+      <a class="btn btn-sm btn-primary" [routerLink]="['/permissions/create']">Crear nuevo permiso</a>
+    </div>
     <div class="card-body p-0">
       <table class="table table-hover mb-0">
         <thead class="table-light">

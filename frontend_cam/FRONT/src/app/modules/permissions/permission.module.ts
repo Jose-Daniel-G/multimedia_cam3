@@ -7,16 +7,15 @@ import { PaginationComponent } from '../../shared1/components/pagination/paginat
 import { MessageComponent } from '../../shared1/components/message/message.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { EditComponent } from './edit/edit.component';
-import { HttpClientModule } from '@angular/common/http';
+import { CreateComponent } from './create/create.component';
 
 
 
 @NgModule({
-  declarations: [PermissionsComponent, EditComponent, PaginationComponent, MessageComponent// EnProcesoComponent
+  declarations: [PermissionsComponent, EditComponent, PaginationComponent, CreateComponent, MessageComponent// EnProcesoComponent
   ],
   imports: [
     CommonModule, PermissionRoutingModule,  ReactiveFormsModule,  
-    HttpClientModule // Cada módulo que use HttpClient necesita importarlo
   ],
   exports: [
   ]

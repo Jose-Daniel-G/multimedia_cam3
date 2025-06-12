@@ -3,12 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-
-export interface Permission {
-  id: number;
-  name: string;
-  created_at: string;
-}
+import { Permission } from '../models/permission.model';
 
 @Injectable({
   providedIn: 'root'
@@ -25,6 +20,10 @@ export class PermissionService {
 
   getById(id: number): Observable<Permission> {
     return this.http.get<Permission>(`${this.apiUrl}/${id}`);
+  }
+
+  create(data: { name: string }): Observable<Permission> {
+    return this.http.post<Permission>(this.apiUrl, data);
   }
 
   update(id: number, data: any): Observable<any> {
