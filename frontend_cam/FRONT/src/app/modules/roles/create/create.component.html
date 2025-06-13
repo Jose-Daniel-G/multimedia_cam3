@@ -1,0 +1,62 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between mb-4">
+    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+      Roles / Crear
+    </h2>
+    <!-- Use routerLink for Angular navigation -->
+    <a [routerLink]="['/permissions']" class="btn btn-secondary btn-sm rounded">Volver</a>
+  </div>
+
+  <div class="py-3">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div class="bg-white overflow-hidden shadow-sm rounded">
+        <div class="p-3 text-gray-900">
+          <!-- Bind to the FormGroup and handle submission -->
+          <form [formGroup]="roleForm">
+            <label for="name" class="form-label fs-lg fw-medium">Nombre</label>
+            <div class="mb-3">
+              <!-- Bind to the formControlName -->
+              <input
+                type="text"
+                id="name"
+                formControlName="name"
+                placeholder="Ingresa el nombre"
+                class="form-control border-gray-300 shadow-sm rounded-lg"
+                [ngClass]="{ 'is-invalid': roleForm.get('name')?.invalid && roleForm.get('name')?.touched }"
+              />
+              <!-- Display validation error message -->
+              <p *ngIf="roleForm.get('name')?.invalid && roleForm.get('name')?.touched" class="text-danger fw-medium">
+                El nombre es obligatorio.
+              </p>
+            </div>
+
+            <h4 class="mt-4 mb-2">Permisos:</h4>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-2">
+              <!-- Loop through permissions from the component's permissions array -->
+              <ng-container *ngIf="permissions.length > 0; else noPermissions">
+                <div *ngFor="let permission of permissions" class="mt-3">
+                  <div class="form-check">
+                    <input
+                      type="checkbox"
+                      [id]="'permission-' + permission.id"
+                      [value]="permission.id"
+                      class="form-check-input rounded"
+                      (change)="onPermissionChange($event)"
+                      [checked]="isPermissionSelected(permission.id)"
+                    />
+                    <label class="form-check-label" [for]="'permission-' + permission.id">{{ permission.name }}</label>
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #noPermissions>
+                <div class="col-12">No hay permisos disponibles.</div>
+              </ng-template>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-sm rounded mt-4" [disabled]="roleForm.invalid">Crear Rol</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

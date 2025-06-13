@@ -30,6 +30,12 @@ export const routes: Routes = [
         data: { roles: ['administradorWM', 'presidenteCAEC', 'tesoreroCAEC', 'presidenteCV'] } // Todos pueden acceder
       },
       {
+        path: 'roles',
+        loadChildren: () => import('./modules/roles/roles.module').then(m => m.RolesModule),
+        canActivate: [AuthGuard],
+        data: { roles: ['administradorWM', 'presidenteCAEC', 'tesoreroCAEC', 'presidenteCV'] } // Todos pueden acceder
+      },
+      {
         path: 'raciones',
         loadChildren: () => import('./modules/raciones/raciones.module').then(m => m.RacionesModule),
         canActivate: [AuthGuard],

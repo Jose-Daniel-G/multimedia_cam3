@@ -1,0 +1,68 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4">Roles / Editar</h2>
+    <!-- Use routerLink for Angular navigation -->
+    <a [routerLink]="['/permissions']" class="btn btn-secondary btn-sm">Volver</a>
+  </div>
+
+  <!-- Angular way to display form validation errors for the 'name' field -->
+  <div *ngIf="editRoleForm.get('name')?.invalid && editRoleForm.get('name')?.touched" class="alert alert-danger">
+    <strong>¡Oops!</strong> Hubo algunos problemas con tus datos.<br><br>
+    <ul class="mb-0">
+      <li *ngIf="editRoleForm.get('name')?.errors?.['required']">El nombre del rol es obligatorio.</li>
+      <!-- Add other validation error messages here if you have more validators -->
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <!-- Bind to the FormGroup and handle submission -->
+      <form [formGroup]="editRoleForm" (ngSubmit)="onSubmit()">
+        <div class="mb-3">
+          <label for="name" class="form-label">Nombre del rol</label>
+          <!-- Bind to the formControlName and apply ngClass for validation styles -->
+          <input
+            type="text"
+            name="name"
+            id="name"
+            formControlName="name"
+            class="form-control"
+            [ngClass]="{ 'is-invalid': editRoleForm.get('name')?.invalid && editRoleForm.get('name')?.touched }"
+            placeholder="Nombre del rol"
+          >
+          <!-- Display validation feedback specific to the 'name' field -->
+          <div class="invalid-feedback" *ngIf="editRoleForm.get('name')?.invalid && editRoleForm.get('name')?.touched">
+            <span *ngIf="editRoleForm.get('name')?.errors?.['required']">El nombre del rol es obligatorio.</span>
+          </div>
+        </div>
+
+        <label class="form-label">Permisos</label>
+        <div class="row">
+          <!-- Loop through all available permissions -->
+          <ng-container *ngIf="permissions.length > 0; else noPermissions">
+            <div *ngFor="let permission of permissions" class="col-md-3 mb-2">
+              <div class="form-check">
+                <input
+                  type="checkbox"
+                  [id]="'permission-' + permission.id"
+                  [value]="permission.id"
+                  class="form-check-input"
+                  (change)="onPermissionChange($event)"
+                  [checked]="isPermissionSelected(permission.id)"
+                >
+                <label class="form-check-label" [for]="'permission-' + permission.id">
+                  {{ permission.name }}
+                </label>
+              </div>
+            </div>
+          </ng-container>
+          <ng-template #noPermissions>
+            <div class="col-12">No hay permisos disponibles.</div>
+          </ng-template>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3" [disabled]="editRoleForm.invalid">Actualizar</button>
+      </form>
+    </div>
+  </div>
+</div>
