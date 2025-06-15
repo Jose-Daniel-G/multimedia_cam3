@@ -5,7 +5,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { CommonModule } from '@angular/common';
 
 // Importa las interfaces de tus modelos para tipado seguro
-import { LoginRequest, UsuarioLoginResponse } from '../../../core/models/login.model'; // Asegúrate de que la ruta sea correcta
+import { LoginRequest, AuthUser } from '../../../core/models/login.model';
 
 @Component({
   selector: 'app-login',
@@ -24,11 +24,8 @@ export class LoginComponent {
     private router: Router
   ) {
     this.loginForm = this.fb.group({
-      // ¡CORRECCIÓN CLAVE AQUÍ!
-      // Asegúrate de que los nombres de los controles coincidan con LoginRequest
-      // y lo que tu backend espera para el campo de la contraseña.
       email: ['', [Validators.required, Validators.email]], // Agregado Validators.email para mejor validación
-      password: ['', Validators.required] // Cambiado de 'passwordUsuario' a 'password'
+      password: ['', Validators.required]                   // Cambiado de 'passwordUsuario' a 'password'
     });
   }
 
@@ -47,18 +44,10 @@ export class LoginComponent {
     const credentials: LoginRequest = this.loginForm.value;
 
     this.authService.login(credentials).subscribe({
-      next: (response: UsuarioLoginResponse) => { // Tipado de la respuesta
-        // ¡Manejo del token y datos del usuario!
-        // Asegúrate de que la respuesta del backend contenga el token
-        if (response && response.access_token) {
-          this.authService.setCurrentUser(response); // Guarda toda la respuesta (incluyendo token, roles, etc.)
-          console.log('Login exitoso. Usuario:', this.authService.getCurrentUser());
-          this.router.navigate(['/dashboard']);
-        } else {
-          // Esto debería ser un error del backend si el login fue exitoso pero no hay token
-          this.errorMessage = 'Login exitoso pero no se recibió token de sesión.';
-          console.error('Login exitoso pero no se recibió token en la respuesta:', response);
-        }
+      next: (response: AuthUser) => { // Tipado de la respuesta
+        this.authService.setCurrentUser(response); // ya no da error TS2345
+        console.log('Login exitoso. Usuario:', this.authService.getCurrentUser());
+        this.router.navigate(['/dashboard']); // Redirige al dashboard o a la ruta que desees 
       },
       error: (err) => {
         console.error('Error en login:', err);

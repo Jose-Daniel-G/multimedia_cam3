@@ -58,6 +58,7 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'user' => $user,
         ]);
     }
 
@@ -77,12 +78,13 @@ class AuthController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function logout()
+    public function logout(Request $request)
     {
-        auth()->logout();
+        $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['mensaje' => 'Cierre de sesión exitoso']);
+        return response()->json(['message' => 'Sesión cerrada']);
     }
+
 
     /**
      * Refrescar el token.

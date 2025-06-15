@@ -1,10 +1,9 @@
-// src/app/modules/roles/create/create.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-// import { RoleService } from '../../../core/services/role.service'; // Adjust path if necessary
+import { RoleService } from '../../../core/services/role.service'; // Adjust path if necessary
 import { PermissionService } from '../../../core/services/permission.service'; // Adjust path if necessary
-// import { Role } from '../../../core/models/role.model';
+import { Role } from '../../../core/models/role.model';
 import { Permission } from '../../../core/models/permission.model';
 
 @Component({
@@ -19,7 +18,7 @@ export class CreateComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    // private roleService: RoleService,
+    private roleService: RoleService,
     private permissionService: PermissionService,
     private router: Router
   ) {}
@@ -79,23 +78,23 @@ export class CreateComponent implements OnInit {
    * Handles the form submission.
    * If the form is valid, it creates a new role with the selected permissions.
    */
-//   onSubmit(): void {
-//     if (this.roleForm.valid) {
-//       const newRole: Role = {
-//         name: this.roleForm.value.name,
-//         permissions: this.selectedPermissionIds // Attach the selected permission IDs
-//       };
+  onSubmit(): void {
+    if (this.roleForm.valid) {
+      const newRole: Role = {
+        name: this.roleForm.value.name,
+        permissions: this.selectedPermissionIds // Attach the selected permission IDs
+      };
 
-//       this.roleService.createRole(newRole).subscribe({
-//         next: (response) => {
-//           console.log('Rol creado:', response);
-//           this.router.navigate(['/roles']); // Navigate to the roles list after creation
-//         },
-//         error: (err) => {
-//           console.error('Error al crear rol:', err);
-//           // Implement user-friendly error display here
-//         },
-//       });
-//     }
-//   }
+      this.roleService.createRole(newRole).subscribe({
+        next: (response) => {
+          console.log('Rol creado:', response);
+          this.router.navigate(['/roles']); // Navigate to the roles list after creation
+        },
+        error: (err) => {
+          console.error('Error al crear rol:', err);
+          // Implement user-friendly error display here
+        },
+      });
+    }
+  }
 }

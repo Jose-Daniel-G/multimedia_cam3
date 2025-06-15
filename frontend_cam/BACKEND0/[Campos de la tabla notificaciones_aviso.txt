@@ -1,0 +1,259 @@
+        [Campos de la tabla notificaciones_avisos_hacienda]
+
+
+id_notificacion_hacienda    //no sede donde sacar esta info
+fk_idorganismo_hacienda     //no sede donde sacar esta info
+fk_idusuario_hacienda       //no sede donde sacar esta info
+[fk_idtp_imp]                 - configurado
+[fk_tipo_plantilla]           - configurado
+ruta_archivos               //no sede donde sacar esta info
+nombre_ciudadano            - configurado
+cedula_identificacion       - configurado
+fecha_publicacion           - configurado
+fecha_desfijacion           - configurado
+id_predio                   - configurado
+objeto_contrato             - configurado
+num_predial                 - configurado
+[fk_tipo_acto_tramite]        - configurado
+[fk_estado_publicacion]       - configurado
+[fk_tipo_causa_devolucion]    - configurado
+json_plantilla              // los campos son todos?
+id_estado_auditoria         
+
+                [ CAMPOS OBLIGATORIOS 123 ]
+
+'cedula_identificacion' => ['required', 'regex:/^[0-9]+$/'],
+'fecha_publicacion'      => ['required', 'date_format:Y-m-d'],
+'fecha_desfijacion'      => ['required', 'date_format:Y-m-d'],
+
+[ CAMPOS OBLIGATORIOS 1 Y 2 ]
+
+    'tipo_impuesto'           => ['required', 'numeric'],
+    'tipo_causa_devolucion'   => ['required', 'numeric'],
+    'tipo_acto_tramite'       => ['required', 'numeric'],
+    'tipo_estado_publicacion' => ['required', 'numeric'],
+    'num_exp_res'             => ['nullable'],
+
+    $columnas_en_excel_1y3=[
+    'nombre_ciudadano',
+    'cedula_identificacion',
+    'año',
+    'no_act_tra',
+    'tipo_acto_tramite',
+    'fec_act_tra',
+    'num_exp_res',
+    'arc_adj',
+    'fec_reg',
+    'tipo_estado_publicacion',
+    'fecha_publicacion',
+    'mes_per_gra',
+    'an_per_gra',
+    'tipo_causa_devolucion',
+    'fecha_desfijacion',
+    'hora_reg',]
+
+[ CAMPOS OBLIGATORIOS 3 ]
+
+    'id_predio' => ['required', 'numeric'],
+    'liquidacion' =>  ['required', 'regex:/^[0-9]+$/'],
+    'objeto_contrato' => ['required', 'numeric'],
+    'archivo' =>  ['required', 'regex:/^[0-9]+$/'],;
+
+$columnas_en_excel_3=[
+    'objeto_contrato',
+    'id_predio',
+    'num_predial',
+    'liquidacion',
+    'cedula_identificacion',
+    'nombre_ciudadano',
+    'periodo',
+    'fecha_publicacion',
+    'fecha_desfijacion',
+    'archivo'
+];
+
+
+
+
+
+<?php
+namespace App\Services;
+
+use App\Models\NotificacionAviso;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
+
+class NotificacionAvisoService
+{
+    public function __construct(
+        protected int $tipoPlantillaId,
+        protected int $organismoId,
+        protected int $estadoAuditoriaId,
+        protected string $rutaArchivoExel,
+        protected ?int $fk_idusuario = null
+    ) {}
+
+    public function procesarFila(array $row, string $extension, string $publi_notificacion)
+    {
+        if ($this->tipoPlantillaId == 1 || $this->tipoPlantillaId == 2) {
+            return $this->coactivoPersuasivo($row, $extension, $publi_notificacion);
+        }
+
+        return $this->liquidacion($row, $extension, $publi_notificacion);
+    }
+
+    public function coactivoPersuasivo(array $row, string $extension, string $publi_notificacion)
+    {
+        $validator = Validator::make($row, [
+            'nombre_ciudadano'       => 'required|string|max:255',
+            'cedula_identificacion'  => 'required|string|max:50',
+            'fecha_publicacion'      => 'required',
+            'fecha_desfijacion'      => 'required',
+            'tipo_impuesto'          => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            Log::warning('Fila inválida en Coactivo/Persuasivo: ' . json_encode($validator->errors()->all()));
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos en Coactivo/Persuasivo',
+                'errors'  => $validator->errors(),
+            ], 400);
+        }   
+
+        $meses = 1;
+        $fechas = $this->conversionDateExcelMonth($row['fecha_publicacion'], $row['fecha_desfijacion'], $meses);
+        if (!$fechas) {
+            Log::warning("Diferencia de fechas inválida (se espera ".$meses." mes) en fila: " . json_encode($row));
+            return response()->json([
+                'success' => false,
+                'message' => "Diferencia de fechas inválida (se espera {$meses} mes).",
+            ], 400);
+        }
+
+        try {
+            NotificacionAviso::create([
+                'publi_notificacion'       => $publi_notificacion,
+                'fk_idorganismo'           => $this->organismoId,
+                'fk_idusuario'             => $this->fk_idusuario ?? Auth::id(),
+                'fk_idtp_imp'              => $row['tipo_impuesto'],
+                'fk_tipo_plantilla'        => $this->tipoPlantillaId,
+                'ruta_archivos'            => $this->rutaArchivoExel,
+                'nombre_ciudadano'         => $row['nombre_ciudadano'],
+                'cedula_identificacion'    => $row['cedula_identificacion'],
+                'fecha_publicacion'        => $fechas['fecha_publicacion']->format('Y-m-d'),
+                'fecha_desfijacion'        => $fechas['fecha_desfijacion']->format('Y-m-d'),
+                'fk_tipo_acto_tramite'     => $row['tipo_acto_tramite'] ?? null,
+                'fk_estado_publicacion'    => $row['estado_publicacion'] ?? null,
+                'fk_tipo_causa_devolucion' => $row['tipo_causa_devolucion'] ?? null,
+                'json_plantilla'           => json_encode(['data' => $row[7] ?? []]),
+                'id_estado_auditoria'      => $this->estadoAuditoriaId,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al guardar Notificación Coactiva: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar la notificación',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function liquidacion(array $row, string $extension, string $publi_notificacion)
+    {
+        $validator = Validator::make($row, [
+            'nombre_ciudadano'       => 'required|string|max:255',
+            'cedula_identificacion'  => 'required|string|max:50',
+            'fecha_publicacion'      => 'required',
+            'fecha_desfijacion'      => 'required',
+        ]);
+    
+        if ($validator->fails()) {
+            Log::warning('Fila inválida en Liquidación: ' . json_encode($validator->errors()->all()));
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos en Liquidación',
+                'errors'  => $validator->errors(),
+            ], 400);
+        }
+
+        $dias = 5;
+        $fechas = $this->conversionDateExcelDay($row['fecha_publicacion'], $row['fecha_desfijacion'], $dias);
+        if (!$fechas) {
+            Log::warning("Diferencia de fechas inválida (se espera ".$dias." días) en fila: " . json_encode($row));
+            return response()->json([
+                'success' => false,
+                'message' => "Diferencia de fechas inválida (se espera {$dias} días).",
+            ], 400);
+        }
+
+        try {
+            NotificacionAviso::create([
+                'publi_notificacion'       => $publi_notificacion,
+                'fk_idorganismo'           => $this->organismoId,
+                'fk_idusuario'             => $this->fk_idusuario ?? Auth::id(),
+                'fk_idtp_imp'              => 1,
+                'fk_tipo_plantilla'        => $this->tipoPlantillaId,
+                'ruta_archivos'            => $this->rutaArchivoExel,
+                'nombre_ciudadano'         => $row['nombre_ciudadano'],
+                'cedula_identificacion'    => $row['cedula_identificacion'],
+                'fecha_publicacion'        => $fechas['fecha_publicacion']->format('Y-m-d'),
+                'fecha_desfijacion'        => $fechas['fecha_desfijacion']->format('Y-m-d'),
+                'id_predio'                => $row['id_predio'] ?? null,
+                'objeto_contrato'          => $row['objeto_contrato'] ?? null,
+                'num_predial'              => $row['num_predial'] ?? null,
+                'fk_publi_noti'            => $row['publi_noti'] ?? null,
+                'json_plantilla'           => json_encode(['data' => $row[7] ?? []]),
+                'id_estado_auditoria'      => $this->estadoAuditoriaId,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al guardar Liquidación: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar la liquidación',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function conversionDateExcelDay($fecha_publicacion, $fecha_desfijacion, $dias)
+    {
+        try {
+            $f1 = $this->parseFechaExcel($fecha_publicacion);
+            $f2 = $this->parseFechaExcel($fecha_desfijacion);
+            return $f2->equalTo($f1->copy()->addDays($dias))
+                ? ['fecha_publicacion' => $f1, 'fecha_desfijacion' => $f2]
+                : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function conversionDateExcelMonth($fecha_publicacion, $fecha_desfijacion, $meses)
+    {
+        try {
+            $f1 = $this->parseFechaExcel($fecha_publicacion);
+            $f2 = $this->parseFechaExcel($fecha_desfijacion);
+            return $f2->equalTo($f1->copy()->addMonths($meses))
+                ? ['fecha_publicacion' => $f1, 'fecha_desfijacion' => $f2]
+                : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function parseFechaExcel($fecha)
+    {
+        try {
+            return is_numeric($fecha)
+                ? Carbon::instance(Date::excelToDateTimeObject($fecha))
+                : Carbon::parse($fecha);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+}

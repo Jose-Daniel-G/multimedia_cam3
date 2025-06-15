@@ -12,7 +12,7 @@
       <div class="bg-white overflow-hidden shadow-sm rounded">
         <div class="p-3 text-gray-900">
           <!-- Bind to the FormGroup and handle submission -->
-          <form [formGroup]="roleForm">
+          <form [formGroup]="roleForm" (ngSubmit)="onSubmit()">
             <label for="name" class="form-label fs-lg fw-medium">Nombre</label>
             <div class="mb-3">
               <!-- Bind to the formControlName -->

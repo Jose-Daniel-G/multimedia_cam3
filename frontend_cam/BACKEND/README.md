@@ -214,6 +214,14 @@ extension=zip
 ```bash
 git remote get-url origin
 ```
+composer require fruitcake/laravel-cors
+composer require rappasoft/laravel-authentication-log
+composer require torann/geoip
+
+php artisan vendor:publish --tag=cors
+
+
+---- ISN'T USE IN THIS PROJECT -----
 php artisan make:livewire NavigationMenu
 
 composer require tymon/jwt-auth
