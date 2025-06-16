@@ -17,6 +17,7 @@ class AuthController extends Controller
     // }
     public function register(Request $request)
     {
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|min:2|max:100',
             'email' => 'required|string|email|max:100|unique:users',
@@ -48,18 +49,57 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json(['error' => 'No autorizado'], 401);
+        Log::info('[BACKEND INFO BEFORE LOGIN] Register request data: ', $request->all());
+
+        // 1. Validar los datos de entrada (email y password)
+        try {
+            $request->validate([
+                'email' => ['required', 'string', 'email'],
+                'password' => ['required', 'string'],
+            ]);
+        } catch (ValidationException $e) {
+            // Si la validación falla, devuelve un error 422 con los mensajes.
+            return response()->json([
+                'message' => 'Credenciales inválidas o datos faltantes.',
+                'errors' => $e->errors()
+            ], 422);
         }
 
-        $user = Auth::user();
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // 2. Intentar autenticar al usuario usando las credenciales
+        // Auth::attempt() verifica las credenciales y, si son correctas,
+        // establece el usuario en la sesión actual.
+        if (! Auth::attempt($request->only('email', 'password'))) {
+            // Si las credenciales son incorrectas, lanza una excepción de validación
+            // con un mensaje genérico para seguridad.
+            throw ValidationException::withMessages([
+                'email' => [trans('auth.failed')], // Usa el mensaje de Laravel para "falló autenticación"
+            ]);
+        }
 
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user,
+        // 3. Regenerar la ID de la sesión para prevenir ataques de fijación de sesión.
+        // Esto es crucial para Sanctum y la seguridad de la sesión.
+        $request->session()->regenerate();
+
+        // 4. Obtener el usuario autenticado (ahora ya está en la sesión)
+        $user = $request->user();
+
+        // 5. Devolver una respuesta exitosa con los datos del usuario.
+        // El navegador ahora enviará la cookie 'laravel_session' automáticamente.
+        Log::info('[BACKEND INFO AFTER LOGIN] User authenticated successfully: ', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
         ]);
+        return response()->json([
+            'message' => 'Inicio de sesión exitoso',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'profile_photo_url' => $user->profile_photo_url, // Asegúrate de que esto no sea nulo o un error
+                'roles' => $user->getRoleNames(), // Asumiendo que usas Spatie/Permission
+            ]
+        ], 200);
     }
 
 

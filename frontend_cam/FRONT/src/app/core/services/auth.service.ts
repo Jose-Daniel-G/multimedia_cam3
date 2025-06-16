@@ -63,8 +63,6 @@ export class AuthService {
   isAuthenticated(): boolean {
     return !!this.getCurrentUser();
   }
-  getToken(): string | null {
-  return localStorage.getItem('access_token');
-}
+
 
 }

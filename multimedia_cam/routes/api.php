@@ -1,17 +1,18 @@
 <?php
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
+use PgSql\Lob;
 
 // Rutas públicas
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
-// Obtener datos del usuario autenticado
+// Ruta protegida individual para obtener usuario autenticado
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+
     return response()->json([
         'name' => $request->user()->name,
         'email' => $request->user()->email,
@@ -19,6 +20,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
         'roles' => $request->user()->getRoleNames(),
     ]);
 
+});
+
+// Rutas protegidas
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Permisos
