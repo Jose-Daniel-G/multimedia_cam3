@@ -15,11 +15,12 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout', 'register', 'user'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // 'allowed_origins' => ['*'],
+    'allowed_origins' => ['http://localhost:4200','http://127.0.0.1:4200'], // o tu dominio de Angular
 
     'allowed_origins_patterns' => [],
 
@@ -29,6 +30,5 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
-
+    'supports_credentials' => true, //JDGO ANGULAR
 ];
