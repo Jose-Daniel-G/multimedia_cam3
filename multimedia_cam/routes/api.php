@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -12,14 +13,16 @@ Route::post('/register', [AuthController::class, 'register']);
 
 // Ruta protegida individual para obtener usuario autenticado
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-
+    $user = $request->user();
     return response()->json([
-        'name' => $request->user()->name,
-        'email' => $request->user()->email,
+        'id' => $user->id, // Añadido para consistencia con AuthUser
+        'name' => $user->name,
+        'email' => $user->email,
         'profile_photo_url' => $request->user()->profile_photo_url,
         'roles' => $request->user()->getRoleNames(),
+        'roles' => $user->getRoleNames(), // Nombres de los roles asignados
+        'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
     ]);
-
 });
 
 // Rutas protegidas

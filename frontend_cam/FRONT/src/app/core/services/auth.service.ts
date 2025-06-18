@@ -139,4 +139,10 @@ export class AuthService {
   isAuthenticated(): boolean {
     return !!this.getCurrentUser() && !!this.getToken(); // ¡CRÍTICO! Verifica ambos.
   }
+  hasPermission(permission: string): boolean {
+    const user = this.getCurrentUser();
+    // Verifica si el usuario existe y si su array de permisos incluye el permiso dado.
+    // Usamos el operador de encadenamiento opcional (?) para evitar errores si 'permissions' es undefined.
+    return user?.permissions?.includes(permission) ?? false;
+  }
 }

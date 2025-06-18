@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router'; // Don't forget Router for navigation
 import { PermissionService } from '../../../core/services/permission.service'; // Correct path to your service
-import { Permission } from '../../../core/models/permission.model'; // Correct path to your model
+import { Permission } from '../../../core/models/role.model'; // Correct path to your model
 
 @Component({
   selector: 'app-edit',

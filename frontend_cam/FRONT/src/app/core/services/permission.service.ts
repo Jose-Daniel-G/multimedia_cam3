@@ -1,14 +1,12 @@
-// src/app/modules/permissions/services/permission.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Permission } from '../models/permission.model';
+import { Permission } from '../models/role.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-
 export class PermissionService {
   private apiUrl = `${environment.URL_SERVICIOS}/permissions`;
 
@@ -32,5 +30,8 @@ export class PermissionService {
 
   delete(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+  getPermissions(): Observable<{ message: string; data: Permission[] }> {
+    return this.http.get<{ message: string; data: Permission[] }>(this.apiUrl);
   }
 }

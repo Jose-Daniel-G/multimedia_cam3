@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router'; // Import Router for redirection
 import { PermissionService } from '../../../core/services/permission.service'; // Adjust path
-import { Permission } from '../../../core/models/permission.model'; // Adjust path
+import { Permission } from '../../../core/models/role.model'; // Adjust path
 
 @Component({
   selector: 'app-permission-create', // Changed from app-create to be more specific

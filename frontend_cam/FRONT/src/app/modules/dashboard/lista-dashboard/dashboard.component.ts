@@ -1,7 +1,5 @@
 import { AfterViewInit, Component, OnInit } from '@angular/core';
-import { Subvencion } from '../../../core/models/subvencion.model';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { SubvencionService } from '../../../core/services/subvencion.service';
 import { NgClass, NgFor } from '@angular/common';
 import { MonedaPenPipe } from '../../../core/pipes/moneda-pen.pipe';
 
@@ -15,7 +13,6 @@ import { MonedaPenPipe } from '../../../core/pipes/moneda-pen.pipe';
 })
 export class DashboardComponent implements OnInit{
 
-  subvenciones: Subvencion[] = [];
   filtroForm: FormGroup;
   idUsuario = 1; // Se obtiene del login
   idPerfil = 1; // Se obtiene del login
@@ -36,7 +33,7 @@ export class DashboardComponent implements OnInit{
     { id: 12, nombre: 'Diciembre' }
   ];
 
-  constructor(private subvencionService: SubvencionService, private fb: FormBuilder) {
+  constructor(private fb: FormBuilder) {
     const fechaActual = new Date();
     this.filtroForm = this.fb.group({
       mes: [fechaActual.getMonth() + 1],
@@ -45,67 +42,67 @@ export class DashboardComponent implements OnInit{
   }
 
   ngOnInit(): void {
-    this.obtenerSubvenciones();
+    // this.obtenerSubvenciones();
 
     // Escuchar cambios en los filtros y actualizar automáticamente
     this.filtroForm.valueChanges.subscribe(() => {
-      this.obtenerSubvenciones();
+      // this.obtenerSubvenciones();
     });
   }
 
-  obtenerSubvenciones(): void {
-    const { mes, anio } = this.filtroForm.value;
-    this.subvencionService.obtenerSubvenciones(mes, anio).subscribe({
-      next: (data) => {
-        this.subvenciones = data;
-        console.log("listadfo", this.subvenciones);
-      },
-      error: (err) => {
-        console.error('Error obteniendo subvenciones:', err);
-      }
-    });
-  }
+  // obtenerSubvenciones(): void {
+  //   const { mes, anio } = this.filtroForm.value;
+  //   this.subvencionService.obtenerSubvenciones(mes, anio).subscribe({
+  //     next: (data) => {
+  //       this.subvenciones = data;
+  //       console.log("listadfo", this.subvenciones);
+  //     },
+  //     error: (err) => {
+  //       console.error('Error obteniendo subvenciones:', err);
+  //     }
+  //   });
+  // }
 
 
-  buscar(): void {
-    this.obtenerSubvenciones();
-  }
+  // buscar(): void {
+  //   this.obtenerSubvenciones();
+  // }
 
-  editarMonto(subvencion: Subvencion): void {
-    if (this.idPerfil !== 1 || this.idRol !== 1) {
-      alert('No tienes permisos para editar montos.');
-      return;
-    }
+  // editarMonto(subvencion: Subvencion): void {
+  //   if (this.idPerfil !== 1 || this.idRol !== 1) {
+  //     alert('No tienes permisos para editar montos.');
+  //     return;
+  //   }
 
-    const nuevoMonto = prompt(`Ingrese nuevo monto para ${subvencion.colegio}:`, subvencion.monto.toString());
-    if (nuevoMonto !== null) {
-      const monto = parseFloat(nuevoMonto);
-      if (isNaN(monto)) {
-        alert('Ingrese un valor numérico válido.');
-        return;
-      }
+  //   const nuevoMonto = prompt(`Ingrese nuevo monto para ${subvencion.colegio}:`, subvencion.monto.toString());
+  //   if (nuevoMonto !== null) {
+  //     const monto = parseFloat(nuevoMonto);
+  //     if (isNaN(monto)) {
+  //       alert('Ingrese un valor numérico válido.');
+  //       return;
+  //     }
 
-      const { mes, anio } = this.filtroForm.value;
+  //     const { mes, anio } = this.filtroForm.value;
 
-      // Verificar si ya existe el monto
-      if (subvencion.monto > 0) {
-        this.subvencionService.actualizarMonto(subvencion.idComite, this.idUsuario, monto, mes, anio).subscribe({
-          next: () => {
-            alert('Monto actualizado correctamente.');
-            this.obtenerSubvenciones();
-          },
-          error: (err) => console.error('Error actualizando monto:', err)
-        });
-      } else {
-        this.subvencionService.registrarMonto(subvencion.idComite, this.idUsuario, monto, mes, anio).subscribe({
-          next: () => {
-            alert('Monto registrado correctamente.');
-            this.obtenerSubvenciones();
-          },
-          error: (err) => console.error('Error registrando monto:', err)
-        });
-      }
-    }
-  }
+  //     // Verificar si ya existe el monto
+  //     if (subvencion.monto > 0) {
+  //       this.subvencionService.actualizarMonto(subvencion.idComite, this.idUsuario, monto, mes, anio).subscribe({
+  //         next: () => {
+  //           alert('Monto actualizado correctamente.');
+  //           this.obtenerSubvenciones();
+  //         },
+  //         error: (err) => console.error('Error actualizando monto:', err)
+  //       });
+  //     } else {
+  //       this.subvencionService.registrarMonto(subvencion.idComite, this.idUsuario, monto, mes, anio).subscribe({
+  //         next: () => {
+  //           alert('Monto registrado correctamente.');
+  //           this.obtenerSubvenciones();
+  //         },
+  //         error: (err) => console.error('Error registrando monto:', err)
+  //       });
+  //     }
+  //   }
+  // }
 
 }

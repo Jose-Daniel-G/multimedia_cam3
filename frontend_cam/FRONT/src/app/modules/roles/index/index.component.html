@@ -1,0 +1,50 @@
+<!-- src/app/modules/roles/index/index.component.html -->
+<div class="container-fluid">
+  <app-message [successMessage]="successMessage" [errorMessage]="errorMessage"></app-message>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Lista de Roles</h5>
+      <!-- Solo mostrar el botón "Crear nuevo rol" si el usuario tiene permiso -->
+      <a *ngIf="checkPermission('create-roles')" class="btn btn-sm btn-primary" [routerLink]="['/dashboard/roles/create']">Crear nuevo rol</a>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Guard Name</th>
+              <!-- ELIMINADO: <th>Permisos</th> - Esta columna ha sido removida porque la API de listado de roles no proporciona los permisos. -->
+              <th>Creación</th>
+              <th class="text-center">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let role of roles">
+              <td>{{ role.id }}</td>
+              <td>{{ role.name }}</td>
+              <td>{{ role.guard_name }}</td>
+              <!-- ELIMINADO: La celda de permisos. -->
+              <td>{{ role.created_at | date: 'dd MMM, y' }}</td>
+              <td class="text-center">
+                <!-- Solo mostrar el botón "Editar" si el usuario tiene permiso -->
+                <a *ngIf="checkPermission('edit-roles')" class="btn btn-sm btn-outline-dark me-2" [routerLink]="['/dashboard/roles', role.id, 'editar']">Editar</a>
+                <!-- Solo mostrar el botón "Eliminar" si el usuario tiene permiso -->
+                <button *ngIf="checkPermission('delete-roles')" class="btn btn-sm btn-danger" (click)="deleteRole(role.id)">Eliminar</button>
+              </td>
+            </tr>
+            <tr *ngIf="roles.length === 0">
+              <!-- Colspan ajustado a 4 columnas: #, Nombre, Guard Name, Creación, Acción -->
+              <td colspan="5" class="text-center">No hay roles registrados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer" *ngIf="totalItems > 0 && totalItems > itemsPerPage">
+      <app-pagination [totalItems]="totalItems" [currentPage]="currentPage" [itemsPerPage]="itemsPerPage" (pageChange)="onPageChange($event)"></app-pagination>
+    </div>
+  </div>
+</div>

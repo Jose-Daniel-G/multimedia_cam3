@@ -17,20 +17,23 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  email_verified_at: string | null;
-  two_factor_confirmed_at: string | null;
-  current_team_id: number | null;
-  profile_photo_path: string | null;
+  email_verified_at: string | null; // Puede ser 'null'
+  password?: string; // No debería ser enviado al frontend, pero es parte de la BD
+  two_factor_secret?: string | null; // Puede ser 'null'
+  two_factor_recovery_codes?: string | null; // Puede ser 'null'
+  two_factor_confirmed_at: string | null; // Puede ser 'null'
+  remember_token?: string | null; // Puede ser 'null'
+  current_team_id: number | null; // Puede ser 'null'
+  profile_photo_path: string | null; // Puede ser 'null'
   created_at: string;
   updated_at: string;
   organismo_id: number;
-  status: number; // Asumo que 1 o 0, por lo que 'number' o 'boolean' si es convertidor
-  profile_photo_url: string;
-  // Si el backend envía roles o permisos dentro del objeto 'user', agrégalos aquí:
-  // roles?: string[];
-  // permissions?: string[];
+  status: number; // Generalmente 0 o 1
+  profile_photo_url: string; // Generada en el backend para el frontend
+ 
+  roles?: string[];
+  permissions?: string[];
 }
-
 /**
  * Interfaz para la respuesta exitosa del login que se recibe del backend.
  * Coincide exactamente con la estructura de tu token de ejemplo.
@@ -38,9 +41,5 @@ export interface AuthUser {
 export interface UsuarioLoginResponse {
   access_token: string;
   token_type: string;
-  user: AuthUser; // Aquí utilizamos la interfaz AuthUser definida arriba
-  // `expires_in` no está en tu ejemplo de token, por lo tanto, no se incluye.
-  // Si los roles y permisos vienen fuera del objeto 'user', como en algunos casos de Laravel/Sanctum:
-  // roles?: string[];
-  // permissions?: string[];
+  user: AuthUser;
 }

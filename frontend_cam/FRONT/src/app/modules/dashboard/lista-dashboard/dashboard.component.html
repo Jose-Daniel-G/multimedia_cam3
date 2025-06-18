@@ -180,21 +180,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let sub of subvenciones">
-              <td>{{ sub.region }}</td>
-              <td>{{ sub.provincia }}</td>
-              <td>{{ sub.distrito }}</td>
-              <td>{{ sub.colegio }}</td>
-              <td>{{ sub.comite }}</td>
-              <td>{{ sub.monto | monedaPEN }}</td>
-              <td>
-                <button class="btn"
-          [ngClass]="sub.monto === 0 ? 'btn-success' : 'btn-primary'"
-          (click)="editarMonto(sub)">
-    {{ sub.monto === 0 ? 'Registrar Monto' : 'Actualizar Monto' }}
-  </button>
-              </td>
-            </tr>
+ 
           </tbody>
         </table>
       </div>

@@ -1,0 +1,49 @@
+<!-- src/app/modules/roles/create/create.component.html -->
+
+<div class="container-fluid">
+
+  <div class="card card-primary">
+    <div class="card-header">
+      <h3 class="card-title">Crear Nuevo Rol</h3>
+    </div>
+    <form [formGroup]="roleForm" (ngSubmit)="onSubmit()"> <!-- Ensure formGroup name matches TS -->
+      <div class="card-body">
+        <div class="form-group">
+          <label for="name">Nombre del Rol</label>
+          <input type="text" formControlName="name" class="form-control" id="name" placeholder="Nombre del Rol">
+          <div *ngIf="roleForm.get('name')?.invalid && (roleForm.get('name')?.dirty || roleForm.get('name')?.touched)" class="text-danger">
+            El nombre es requerido.
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="guard_name">Guard Name</label>
+          <input type="text" formControlName="guard_name" class="form-control" id="guard_name" readonly>
+        </div>
+
+        <!-- Sección de Permisos -->
+        <div class="form-group mt-4">
+          <label>Asignar Permisos:</label>
+          <div *ngIf="permissions.length === 0" class="alert alert-info">
+            Cargando permisos disponibles o no hay permisos.
+          </div>
+          <div *ngFor="let permission of permissions" class="form-check">
+            <input type="checkbox"
+                   class="form-check-input"
+                   [id]="'permission-' + permission.id"
+                   [checked]="isPermissionSelected(permission.id)"
+                   (change)="handlePermissionCheckboxChange(permission.id, $event)">
+                   <!-- ¡CORRECCIÓN CLAVE AQUÍ! Llama a handlePermissionCheckboxChange y pasa permission.id y $event -->
+            <label class="form-check-label" [for]="'permission-' + permission.id">
+              {{ permission.name }}
+            </label>
+          </div>
+        </div>
+
+      </div>
+      <div class="card-footer">
+        <button type="submit" class="btn btn-primary" [disabled]="roleForm!.invalid">Crear Rol</button>
+        <a [routerLink]="['/dashboard/roles']" class="btn btn-secondary ml-2">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>

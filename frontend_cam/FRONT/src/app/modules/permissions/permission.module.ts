@@ -3,19 +3,18 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Necesitas CommonModule para directivas como *ngIf, *ngFor
 import { PermissionRoutingModule } from './permission-routing.module';
 import { PermissionsComponent } from './list-permissions/permissions.component';
-import { PaginationComponent } from '../../shared1/components/pagination/pagination.component';
-import { MessageComponent } from '../../shared1/components/message/message.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { EditComponent } from './edit/edit.component';
 import { CreateComponent } from './create/create.component';
+import { SharedModule } from '../../shared1/shared.module';
 
 
 
 @NgModule({
-  declarations: [PermissionsComponent, EditComponent, PaginationComponent, CreateComponent, MessageComponent// EnProcesoComponent
+  declarations: [PermissionsComponent, EditComponent, CreateComponent// EnProcesoComponent
   ],
   imports: [
-    CommonModule, PermissionRoutingModule,  ReactiveFormsModule,  
+    CommonModule, PermissionRoutingModule,  ReactiveFormsModule,  SharedModule
   ],
   exports: [
   ]
