@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '../../../core/services/auth.service';
+import { AuthService } from '../../../core/services/auth.service'; // Asegúrate de que la ruta sea correcta
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 // Importa las interfaces de tus modelos para tipado seguro
-import { LoginRequest, UsuarioLoginResponse } from '../../../core/models/login.model'; // Asegúrate de que la ruta sea correcta
+// Asegúrate de que la ruta sea correcta y que AuthUser esté importado
+import { LoginRequest, UsuarioLoginResponse, AuthUser } from '../../../core/models/login.model'; 
 
 @Component({
   selector: 'app-login',
@@ -16,7 +17,7 @@ import { LoginRequest, UsuarioLoginResponse } from '../../../core/models/login.m
 })
 export class LoginComponent {
   loginForm: FormGroup;
-  errorMessage: string = ''; // Añadir una variable para mostrar mensajes de error en el HTML
+  errorMessage: string = ''; // Variable para mostrar mensajes de error en el HTML
 
   constructor(
     private fb: FormBuilder,
@@ -24,56 +25,58 @@ export class LoginComponent {
     private router: Router
   ) {
     this.loginForm = this.fb.group({
-      // ¡CORRECCIÓN CLAVE AQUÍ!
-      // Asegúrate de que los nombres de los controles coincidan con LoginRequest
-      // y lo que tu backend espera para el campo de la contraseña.
-      email: ['', [Validators.required, Validators.email]], // Agregado Validators.email para mejor validación
-      password: ['', Validators.required] // Cambiado de 'passwordUsuario' a 'password'
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required]
     });
   }
 
-  login() {
-    // Resetea cualquier mensaje de error anterior
-    this.errorMessage = '';
+  /**
+   * Maneja el envío del formulario de login.
+   * Realiza la llamada al servicio de autenticación y gestiona la respuesta.
+   */
+  login(): void {
+    this.errorMessage = ''; // Resetea cualquier mensaje de error anterior
 
     if (this.loginForm.invalid) {
       this.errorMessage = 'Por favor, ingresa un email y contraseña válidos.';
-      // Opcional: marca los campos como tocados para que los mensajes de validación HTML aparezcan
       this.loginForm.markAllAsTouched();
+      console.warn('LoginComponent: Formulario inválido. Detalles:', this.loginForm.errors);
       return;
     }
 
-    // Castea a LoginRequest para asegurar el tipado
     const credentials: LoginRequest = this.loginForm.value;
 
+    console.log('LoginComponent: Enviando credenciales al AuthService para login.');
+
+    // Se suscribe al Observable que devuelve el AuthService.login()
+    // El AuthService ya maneja el flujo completo (CSRF, POST login, guardar token, GET /api/user).
+    // La respuesta 'userResponse' de este subscribe será el AuthUser devuelto por /api/user.
     this.authService.login(credentials).subscribe({
-      next: (response: UsuarioLoginResponse) => { // Tipado de la respuesta
-        // ¡Manejo del token y datos del usuario!
-        // Asegúrate de que la respuesta del backend contenga el token
-        if (response && response.access_token) {
-          this.authService.setCurrentUser(response); // Guarda toda la respuesta (incluyendo token, roles, etc.)
-          console.log('Login exitoso. Usuario:', this.authService.getCurrentUser());
-          this.router.navigate(['/dashboard']);
-        } else {
-          // Esto debería ser un error del backend si el login fue exitoso pero no hay token
-          this.errorMessage = 'Login exitoso pero no se recibió token de sesión.';
-          console.error('Login exitoso pero no se recibió token en la respuesta:', response);
-        }
+      // ¡CORRECCIÓN AQUÍ! Cambiado el tipo de 'userResponse' de 'UsuarioLoginResponse' a 'AuthUser'.
+      next: (userResponse: AuthUser) => { 
+        // Si llegamos aquí, el login fue exitoso, el token se guardó en localStorage (en AuthService),
+        // y los datos del usuario se obtuvieron de /api/user.
+        console.log('LoginComponent: Login exitoso. Usuario autenticado:', userResponse);
+        console.log('LoginComponent: Redireccionando a /dashboard.');
+        this.router.navigate(['/dashboard']); // Redirigir al dashboard
       },
       error: (err) => {
-        console.error('Error en login:', err);
+        console.error('LoginComponent: Error en login:', err);
 
         // Intenta obtener un mensaje de error más específico del backend si lo proporciona
-        if (err.error && err.error.error) {
-          this.errorMessage = err.error.error; // Como el backend devuelve {error: 'No autorizado'}
+        if (err.error && err.error.message) {
+          this.errorMessage = err.error.message; // Mensaje del servidor (ej. 'Credenciales incorrectas')
         } else if (err.status === 401) {
-          this.errorMessage = 'Credenciales incorrectas.'; // Mensaje genérico para 401
+          this.errorMessage = 'Credenciales incorrectas.';
+        } else if (err.status === 419) {
+          this.errorMessage = 'La sesión ha expirado o un problema de seguridad. Por favor, recarga la página e intenta de nuevo.';
         } else if (err.status === 500) {
-          this.errorMessage = 'Error interno del servidor. Intenta de nuevo más tarde.';
+          this.errorMessage = 'Error interno del servidor. Por favor, intenta de nuevo más tarde.';
         } else {
           this.errorMessage = 'Ocurrió un error inesperado al iniciar sesión.';
         }
-        alert(this.errorMessage); // Mantener la alerta por ahora, puedes quitarla si usas solo errorMessage en HTML
+        // Usar alert() para depuración, pero considera mostrar el mensaje directamente en el HTML
+        alert(this.errorMessage);
       }
     });
   }

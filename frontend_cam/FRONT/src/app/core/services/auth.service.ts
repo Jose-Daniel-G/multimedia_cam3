@@ -26,7 +26,9 @@ export class AuthService {
       })
     );
   }
-
+  getToken(): string | null {
+    return localStorage.getItem('access_token');
+  }
   setCurrentUser(user: UsuarioLoginResponse): void {
     localStorage.setItem('user', JSON.stringify(user));
   }
