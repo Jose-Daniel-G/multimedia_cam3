@@ -1,3 +1,11 @@
+<!-- Angular -->
+npm cache clean --force
+rm -rf node_modules
+rm -rf .angular/cache
+npm install
+<!-- FIN -->
+
+
 npm install bootstrap@5 --save
 npm install bootstrap jquery popper.js --save
 npm install bootstrap-icons
