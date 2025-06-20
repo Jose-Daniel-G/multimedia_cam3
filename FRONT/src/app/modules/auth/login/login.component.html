@@ -1,0 +1,51 @@
+<div class="login-page bg-body-secondary">
+  <div class="login-box">
+    <div class="login-logo">
+      <a href="../index2.html"><b>Alcaldia</b><br> Santiago de Cali</a>
+    </div>
+    <div class="card">
+      <div class="card-body login-card-body">
+        <p class="login-box-msg">Inicie sesión para comenzar su sesión</p>
+        <form [formGroup]="loginForm" (ngSubmit)="login()">
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" formControlName="email" placeholder="Email">
+            <div class="input-group-text"><span class="bi bi-envelope"></span></div>
+          </div>
+          <div *ngIf="loginForm.get('email')?.invalid && (loginForm.get('email')?.dirty || loginForm.get('email')?.touched)" class="text-danger small mb-3">
+            <div *ngIf="loginForm.get('email')?.errors?.['required']">El email es requerido.</div>
+            <div *ngIf="loginForm.get('email')?.errors?.['email']">Por favor, introduce un email válido.</div>
+          </div>
+
+          <div class="input-group mb-3">
+            <input type="password" class="form-control" formControlName="password" placeholder="Contraseña">
+            <div class="input-group-text"><span class="bi bi-lock-fill"></span></div>
+          </div>
+          <div *ngIf="loginForm.get('password')?.invalid && (loginForm.get('password')?.dirty || loginForm.get('password')?.touched)" class="text-danger small mb-3">
+            <div *ngIf="loginForm.get('password')?.errors?.['required']">La contraseña es requerida.</div>
+          </div>
+
+          <div class="row">
+            <div class="col-6">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault" />
+                <label class="form-check-label" for="flexCheckDefault"> Recuérdame </label>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-xs" [disabled]="loginForm.invalid">Iniciar Sesión</button>
+              </div>
+            </div>
+            </div>
+          <div *ngIf="errorMessage" class="alert alert-danger mt-3" role="alert">
+            {{ errorMessage }}
+          </div>
+        </form>
+        <p class="mb-1"><a href="forgot-password.html">Olvidé mi contraseña</a></p>
+        <p class="mb-0">
+          <a href="register.html" class="text-center"> Registrar una nueva membresía </a>
+        </p>
+      </div>
+      </div>
+  </div>
+  </div>

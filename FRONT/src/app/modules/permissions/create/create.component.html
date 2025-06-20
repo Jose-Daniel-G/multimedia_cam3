@@ -1,0 +1,24 @@
+<div class="container-fluid">
+  <div class="card">
+    <div class="card-body">
+      <form [formGroup]="permissionForm" (ngSubmit)="onSubmit()">
+        <div class="mb-3">
+          <label for="name" class="form-label">Nombre</label>
+          <input
+            type="text"
+            id="name"
+            formControlName="name"
+            class="form-control"
+            [ngClass]="{ 'is-invalid': permissionForm.get('name')?.invalid && permissionForm.get('name')?.touched }"
+            placeholder="Ingresa el nombre"
+          />
+          <div class="invalid-feedback" *ngIf="permissionForm.get('name')?.invalid && permissionForm.get('name')?.touched">
+            El nombre es obligatorio.
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" [disabled]="permissionForm.invalid">Enviar</button>
+      </form>
+    </div>
+  </div>
+</div>

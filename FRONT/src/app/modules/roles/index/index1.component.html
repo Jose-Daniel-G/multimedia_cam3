@@ -1,0 +1,70 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4">Roles / Listado</h2>
+    <!-- Link to create a new role -->
+    <a [routerLink]="['/roles/create']" class="btn btn-primary btn-sm">Crear Rol</a>
+  </div>
+
+  <!-- Display success/error messages using the MessageComponent -->
+  <!-- <app-message *ngIf="successMessage" type="success" [message]="successMessage"></app-message> -->
+  <!-- <app-message *ngIf="errorMessage" type="danger" [message]="errorMessage"></app-message> -->
+
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Permisos</th>
+              <th>Creación</th>
+              <th class="text-center">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Loop through roles using *ngFor -->
+            <ng-container *ngIf="roles.length > 0; else noRoles">
+              <tr *ngFor="let role of roles; let i = index">
+                <td>{{ role.id }}</td>
+                <td>{{ role.name }}</td>
+                <td>{{ getPermissionNames(role.permissions ?? []) }}</td>
+                <td>{{ role.created_at | date:'dd MMM, yyyy' }}</td>
+                <td class="text-center">
+                  <!-- Conditional display for edit button based on permissions -->
+                  <ng-container *ngIf="hasPermission('roles.edit')">
+                    <button (click)="editRole(role.id)" class="btn btn-sm btn-primary me-2">
+                      Editar
+                    </button>
+                  </ng-container>
+                  <!-- Conditional display for delete button based on permissions -->
+                  <ng-container *ngIf="hasPermission('roles.delete')">
+                    <button (click)="deleteRole(role.id)" class="btn btn-sm btn-danger">
+                      Eliminar
+                    </button>
+                  </ng-container>
+                </td>
+              </tr>
+            </ng-container>
+            <ng-template #noRoles>
+              <tr>
+                <td colspan="5" class="text-center">No hay roles disponibles.</td>
+              </tr>
+            </ng-template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Component -->
+      <div class="mt-3">
+        <!-- Assuming PaginationComponent takes these inputs and emits pageChange -->
+        <app-pagination
+          [totalItems]="totalItems"
+          [itemsPerPage]="itemsPerPage"
+          [currentPage]="currentPage"
+          (pageChange)="onPageChange($event)"
+        ></app-pagination>
+      </div>
+    </div>
+  </div>
+</div>
