@@ -5,126 +5,94 @@ namespace App\Http\Controllers;
 use App\Models\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\Controller;
 
 class PermissionController extends Controller 
 {
     public function __construct()
     {
-        $this->middleware('permission:permissions.index')->only('index');
-        $this->middleware('permission:permissions.edit')->only('edit');
-        $this->middleware('permission:permissions.create')->only('create');
-        $this->middleware('permission:permissions.delete')->only('destroy');
+        return [
+            $this->middleware('permission:permissions.index')->only('index'),
+            $this->middleware('permission:permissions.edit')->only('edit'),
+            $this->middleware('permission:permissions.create')->only('create'),
+            $this->middleware('permission:permissions.delete')->only('destroy'),
+        ];
     }
-
     public function index()
     {
         $permissions = Permission::orderBy('created_at', 'DESC')->paginate(10);
-        return response()->json([
-            'status' => true,
-            'data' => $permissions
-        ]);
+        return view('admin.permissions.index', compact('permissions'));
     }
 
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        return view('admin.permissions.create');
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:permissions|min:3'
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
+        if ($validator->passes()) {
+            Permission::create(['name' => $request->name,'guard_name' => 'web',]);
+            return redirect()->route('permissions.index')->with('success', 'Permiso añadido exitosamente');
+        } else {
+            return redirect()->route('permissions.index')->withInput()->withErrors($validator);
         }
-
-        $permission = Permission::create([
-            'name' => $request->name,
-            'guard_name' => 'web',
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Permiso creado exitosamente',
-            'data' => $permission
-        ]);
     }
 
     public function show(Permission $permission)
     {
-        return response()->json([
-            'status' => true,
-            'data' => $permission
-        ]);
+        return view('admin.permissions.create');
     }
 
     public function edit($id)
     {
-        $permission = Permission::find($id);
-
-        if (!$permission) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Permiso no encontrado'
-            ], 404);
-        }
-
-        return response()->json([
-            'status' => true,
-            'data' => $permission
-        ]);
+        $permission = Permission::findOrfail($id);
+        return view('admin.permissions.edit', compact('permission'));
     }
 
     public function update(Request $request, $id)
     {
-        $permission = Permission::find($id);
-
-        if (!$permission) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Permiso no encontrado'
-            ], 404);
-        }
+        $permission = Permission::findOrfail($id);
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|min:3|unique:permissions,name,' . $id
+            'name' => 'required|min:3|unique:permissions,name,' . $id . ',id'
         ]);
+        if ($validator->passes()) {
+            $permission->name = $request->name;
+            $permission->guard_name ='web'; // <- necesario para evitar el error
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
+            $permission->save();
+            return redirect()->route('permissions.index')->with('success','Permiso Actualizado exitosamente.');
+        } else {
+            return redirect()->route('permissions.edit',$id)->withInput()->withErrors($validator);
         }
-
-        $permission->update([
-            'name' => $request->name,
-            'guard_name' => 'web'
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Permiso actualizado exitosamente',
-            'data' => $permission
-        ]);
     }
 
-    public function destroy(Request $request)
-    {
-        $permission = Permission::find($request->id);
-
-        if (!$permission) {
+    public function destroy(Request $request) {
+        $id = $request->id;
+    
+        $permission = Permission::find($id);
+    
+        if ($permission == null) {
+            session()->flash('error', 'Permission not found');
             return response()->json([
-                'status' => false,
-                'message' => 'Permiso no encontrado'
-            ], 404);
+                'status' => false
+            ]);
         }
-
+    
         $permission->delete();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Permiso eliminado exitosamente'
-        ]);
+    
+        session()->flash('success', 'Permission deleted successfully');
+        return redirect()->back()->with('success', 'Permiso eliminado exitosamente.');
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class TipoPlantilla extends Model
 {
     use HasFactory;
+    public $incrementing = true; 
     protected $table = 'tipo_plantilla';
     protected $primaryKey = 'id_tipo_plantilla'; // Verifica que la clave primaria es 'id'
 }

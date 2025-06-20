@@ -1,0 +1,76 @@
+        [Campos de la tabla notificaciones_avisos_hacienda]
+
+
+id_notificacion                                      //no es autoincremental -- indice
+fk_idorganismo    organismo usuario logeado          //modificado ya no se termina _hacienda
+fk_idusuario      usuario logead                     //_hacienda 
+[fk_idtp_imp]                 - configurado
+[fk_tipo_plantilla]           - configurado
+ruta_archivos               //no sede donde sacar esta info
+nombre_ciudadano            - configurado
+cedula_identificacion       - configurado
+fecha_publicacion           - configurado
+fecha_desfijacion           - configurado
+id_predio                   - configurado
+objeto_contrato             - configurado
+num_predial                 - configurado
+[fk_tipo_acto_tramite]        - configurado
+[fk_estado_publicacion]       - configurado
+[fk_tipo_causa_devolucion]    - configurado
+json_plantilla              // los campos son todos?
+id_estado_auditoria         
+
+                [ CAMPOS OBLIGATORIOS 123 ]
+
+'cedula_identificacion' => ['required', 'regex:/^[0-9]+$/'],
+'fecha_publicacion'      => ['required', 'date_format:Y-m-d'],
+'fecha_desfijacion'      => ['required', 'date_format:Y-m-d'],
+
+[ CAMPOS OBLIGATORIOS 1 Y 2 ]
+
+    'tipo_impuesto'           => ['required', 'numeric'],
+    'tipo_causa_devolucion'   => ['required', 'numeric'],
+    'tipo_acto_tramite'       => ['required', 'numeric'],
+    'tipo_estado_publicacion' => ['required', 'numeric'],
+    'num_exp_res'             => ['nullable'],
+
+    $columnas_en_excel_1y3=[
+    'nombre_ciudadano',
+    'cedula_identificacion',
+    'año',
+    'no_act_tra',
+    'tipo_acto_tramite',
+    'fec_act_tra',
+    'num_exp_res',
+    'arc_adj',
+    'fec_reg',
+    'tipo_estado_publicacion',
+    'fecha_publicacion',
+    'mes_per_gra',
+    'an_per_gra',
+    'tipo_causa_devolucion',
+    'fecha_desfijacion',
+    'hora_reg',]
+
+[ CAMPOS OBLIGATORIOS 3 ]
+
+    'id_predio' => ['required', 'numeric'],
+    'liquidacion' =>  ['required', 'regex:/^[0-9]+$/'],
+    'objeto_contrato' => ['required', 'numeric'],
+    'archivo' =>  ['required', 'regex:/^[0-9]+$/'],;
+
+$columnas_en_excel_3=[
+    'objeto_contrato',
+    'id_predio',
+    'num_predial',
+    'liquidacion',
+    'cedula_identificacion',
+    'nombre_ciudadano',
+    'periodo',
+    'fecha_publicacion',
+    'fecha_desfijacion',
+    'archivo'
+];
+
+
+numero de intentos realizados queda registrado en la tabla evento auditoria

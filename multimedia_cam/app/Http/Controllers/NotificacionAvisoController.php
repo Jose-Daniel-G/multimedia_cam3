@@ -369,7 +369,11 @@ class NotificacionAvisoController extends Controller
 
                 if (isset($dataRaw[0][1])) {
                     $id_plantilla = substr($dataRaw[0][1], 0, 1);
-                    $plantilla = TipoPlantilla::find($id_plantilla);
+                    Log::debug("id plantilla ".$id_plantilla);
+                    $tplantilla = TipoPlantilla::find((int)$id_plantilla);
+                    Log::debug("plantilla ".json_encode($tplantilla));
+                    $plantilla = TipoPlantilla::where('id_tipo_plantilla', (int)$id_plantilla)->first();
+                    Log::debug("plantilla ".json_encode($plantilla));
                     $n_registros = $dataRaw[1][1];
                     $n_pdfs = $dataRaw[2][1];
 
