@@ -6,7 +6,7 @@ import { PermissionsComponent } from './list-permissions/permissions.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { EditComponent } from './edit/edit.component';
 import { CreateComponent } from './create/create.component';
-import { SharedModule } from '../../shared1/shared.module';
+import { SharedModule } from '../../shared/shared.module';
 
 
 

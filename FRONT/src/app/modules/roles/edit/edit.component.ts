@@ -51,26 +51,7 @@ export class EditComponent implements OnInit {
   }
 
   loadRoleData(id: number): void {
-    this.roleService.getRole(id).subscribe({
-      // El método es getRole(), no getRoleById()
-      next: (response: { message: string; data: Role }) => {
-        // Tipado explícito con la nueva interfaz Role
-        const role = response.data;
-        this.editRoleForm.patchValue({
-          name: role.name,
-          guard_name: role.guard_name,
-        });
-        // **CRÍTICO:** Eliminamos la lógica que intentaba acceder a role.permissions
-        // if (role.permissions) {
-        //   this.selectedPermissionIds = (role.permissions as (Permission | number)[]).map(p => typeof p === 'object' ? p.id : p);
-        // }
-      },
-      error: (err: any) => {
-        // Tipado explícito
-        console.error('Error al cargar rol:', err);
-        this.errorMessage = err.error?.message || 'Error al cargar el rol.';
-      },
-    });
+
   }
 
   // Este método se llamará cuando el usuario seleccione/deseleccione un permiso
@@ -94,43 +75,6 @@ export class EditComponent implements OnInit {
   }
 
   onSubmit(): void {
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    if (this.editRoleForm.invalid || !this.roleId) {
-      this.errorMessage =
-        'Por favor, completa todos los campos requeridos y asegúrate de que el ID del rol es válido.';
-      this.editRoleForm.markAllAsTouched();
-      return;
-    }
-
-    // Al actualizar, se enviarán el nombre, guard_name y los IDs de los permisos seleccionados.
-    // Tu backend de Laravel (ej. en RoleController@update) deberá manejar esto,
-    // por ejemplo, usando $role->syncPermissions($request->permissions);
-    const updatedRolePayload: Partial<Role> & { permissions?: number[] } = {
-      name: this.editRoleForm.value.name,
-      guard_name: this.editRoleForm.value.guard_name,
-      permissions: this.selectedPermissionIds, // Envía los IDs de permisos seleccionados
-    };
-
-    this.roleService.updateRole(this.roleId, updatedRolePayload).subscribe({
-      next: (response: { message: string; data: Role }) => {
-        // Tipado explícito
-        this.successMessage =
-          response.message || 'Rol actualizado exitosamente.';
-        console.log('Rol actualizado:', response.data);
-        this.router.navigate(['/dashboard/roles']);
-      },
-      error: (err: any) => {
-        // Tipado explícito
-        console.error('Error al actualizar rol:', err);
-        this.errorMessage = err.error?.message || 'Error al actualizar el rol.';
-        if (err.error?.errors) {
-          for (const key in err.error.errors) {
-            this.errorMessage += `\n${err.error.errors[key].join(', ')}`;
-          }
-        }
-      },
-    });
+ 
   }
 }

@@ -5,7 +5,7 @@ import { EditComponent } from './edit/edit.component';
 import { CreateComponent } from './create/create.component';
 import { RolesRoutingModule } from './roles-routing.module';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { SharedModule } from '../../shared1/shared.module';
+import { SharedModule } from '../../shared/shared.module';
 
 
 

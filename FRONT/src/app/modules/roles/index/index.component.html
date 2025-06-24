@@ -6,7 +6,8 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Lista de Roles</h5>
       <!-- Solo mostrar el botón "Crear nuevo rol" si el usuario tiene permiso -->
-      <a *ngIf="checkPermission('create-roles')" class="btn btn-sm btn-primary" [routerLink]="['/dashboard/roles/create']">Crear nuevo rol</a>
+      <a *ngIf="checkPermission('create-roles')" class="btn btn-sm btn-primary"
+        [routerLink]="['/dashboard/roles/create']">Crear nuevo rol</a>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -15,8 +16,7 @@
             <tr>
               <th>#</th>
               <th>Nombre</th>
-              <th>Guard Name</th>
-              <!-- ELIMINADO: <th>Permisos</th> - Esta columna ha sido removida porque la API de listado de roles no proporciona los permisos. -->
+              <th>Permisos</th>
               <th>Creación</th>
               <th class="text-center">Acción</th>
             </tr>
@@ -25,14 +25,26 @@
             <tr *ngFor="let role of roles">
               <td>{{ role.id }}</td>
               <td>{{ role.name }}</td>
-              <td>{{ role.guard_name }}</td>
-              <!-- ELIMINADO: La celda de permisos. -->
+              <td>
+                <ng-container *ngIf="role.permissions && role.permissions.length > 0">
+                  <ul>
+                    <li *ngFor="let permission of role.permissions">
+                      {{ permission.name }}
+                    </li>
+                  </ul>
+                </ng-container>
+                <ng-container *ngIf="!role.permissions || role.permissions.length === 0">
+                  No permissions assigned.
+                </ng-container>
+              </td>
               <td>{{ role.created_at | date: 'dd MMM, y' }}</td>
               <td class="text-center">
                 <!-- Solo mostrar el botón "Editar" si el usuario tiene permiso -->
-                <a *ngIf="checkPermission('edit-roles')" class="btn btn-sm btn-outline-dark me-2" [routerLink]="['/dashboard/roles', role.id, 'editar']">Editar</a>
+                <a *ngIf="checkPermission('edit-roles')" class="btn btn-sm btn-outline-dark me-2"
+                  [routerLink]="['/dashboard/roles', role.id, 'editar']">Editar</a>
                 <!-- Solo mostrar el botón "Eliminar" si el usuario tiene permiso -->
-                <button *ngIf="checkPermission('delete-roles')" class="btn btn-sm btn-danger" (click)="deleteRole(role.id)">Eliminar</button>
+                <button *ngIf="checkPermission('delete-roles')" class="btn btn-sm btn-danger"
+                  (click)="deleteRole(role.id)">Eliminar</button>
               </td>
             </tr>
             <tr *ngIf="roles.length === 0">
@@ -44,7 +56,10 @@
       </div>
     </div>
     <div class="card-footer" *ngIf="totalItems > 0 && totalItems > itemsPerPage">
-      <app-pagination [totalItems]="totalItems" [currentPage]="currentPage" [itemsPerPage]="itemsPerPage" (pageChange)="onPageChange($event)"></app-pagination>
+      <app-pagination [totalItems]="totalItems" [currentPage]="currentPage" [itemsPerPage]="itemsPerPage"
+        (pageChange)="onPageChange($event)"></app-pagination>
     </div>
+    <pre>{{ roles | json }}</pre>
+
   </div>
 </div>
