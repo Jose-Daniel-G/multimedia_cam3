@@ -1,8 +1,3 @@
-// src/app/core/models/role.model.ts
-
-/**
- * Interface for the Permission model as received from the backend.
- */
 export interface Permission {
   id: number;
   name: string;
@@ -47,16 +42,18 @@ export interface CreateRolePayload {
 export interface UpdateRolePayload {
   name?: string;
   guard_name?: string;
-  permission?: number[]; // When sending to backend, 'permission' is an array of IDs
+  permission?: number[]; // <--- ¡Importante! 'permission' es un array de IDs, no de objetos Permission
 }
 
 /**
  * Interface for Laravel's pagination response structure.
- * @template T The type of data contained within the 'data' array (e.g., Role[]).
+ * This represents the structure of the *inner* 'data' object from your Postman response
+ * (e.g., `response.data`).
+ * @template T The type of data contained within the 'data' array inside pagination (e.g., Role[] or Permission[]).
  */
-export interface ApiResponse<T> { // Renamed from RoleApiResponse for generic use
+export interface PaginationData<T> {
   current_page: number;
-  data: T; // This will be T[] (e.g., Role[]) if paginated, or T (e.g., Role) for single item
+  data: T; // This will be the actual array of items (e.g., Role[] or Permission[])
   first_page_url: string | null;
   from: number | null;
   last_page: number;
@@ -70,8 +67,20 @@ export interface ApiResponse<T> { // Renamed from RoleApiResponse for generic us
   total: number;
 }
 
+/**
+ * Interface for the overall API response wrapper, which includes 'status' and the main 'data' property
+ * that now contains the PaginationData structure.
+ * @template T The type of data within the 'data' array of the PaginationData (e.g., Role[] or Permission[]).
+ */
+export interface ApiResponse<T> {
+  status?: boolean; // Optional, as some APIs might not include it
+  message?: string; // Optional, for messages like "Role updated successfully"
+  data: PaginationData<T>; // This 'data' property now explicitly holds the PaginationData structure
+}
+
+
 // Added for general API success messages
 export interface SuccessMessageResponse {
   message: string;
-  data?: any; // Optional data if API returns it
+  data?: any; // Optional data if API returns it, can be Role for update operations sometimes
 }

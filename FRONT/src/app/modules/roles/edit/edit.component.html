@@ -1,5 +1,3 @@
-<!-- src/app/modules/roles/edit/edit.component.html -->
-
 <div class="container-fluid">
   <app-message [successMessage]="successMessage" [errorMessage]="errorMessage"></app-message>
 
@@ -16,18 +14,16 @@
             El nombre es requerido.
           </div>
         </div>
-        <div class="form-group">
-          <label for="guard_name">Guard Name</label>
-          <input type="text" formControlName="guard_name" class="form-control" id="guard_name" readonly>
-        </div>
 
         <!-- Sección de Permisos -->
         <div class="form-group mt-4">
           <label>Permisos:</label>
-          <div *ngIf="availablePermissions.length === 0" class="alert alert-info">
+          <!-- Show loading/no permissions message if availablePermissions is empty or null/undefined -->
+          <div *ngIf="!availablePermissions || availablePermissions.length === 0" class="alert alert-info">
             Cargando permisos disponibles o no hay permisos.
           </div>
-          <div *ngFor="let permission of availablePermissions" class="form-check">
+          <!-- Iterate over availablePermissions. Use '|| []' to ensure it's always iterable -->
+          <div *ngFor="let permission of availablePermissions || []" class="form-check">
             <input type="checkbox"
                    class="form-check-input"
                    [id]="'permission-' + permission.id"
@@ -45,5 +41,21 @@
         <a [routerLink]="['/dashboard/roles']" class="btn btn-secondary ml-2">Cancelar</a>
       </div>
     </form>
+
+    <!-- Sección de Depuración JSON (visible/ocultable) -->
+    <div class="card-footer mt-4">
+      <button class="btn btn-info btn-sm" (click)="toggleDebugJson()">
+        {{ showDebugJson ? 'Ocultar JSON de Depuración' : 'Mostrar JSON de Depuración' }}
+      </button>
+
+      <div *ngIf="showDebugJson" class="mt-3 p-3 bg-light border rounded">
+        <h5>Permisos Disponibles (availablePermissions):</h5>
+        <pre><code style="white-space: pre-wrap; word-break: break-all;">{{ availablePermissions | json }}</code></pre>
+
+        <h5 class="mt-3">IDs de Permisos Seleccionados (selectedPermissionIds):</h5>
+        <pre><code style="white-space: pre-wrap; word-break: break-all;">{{ selectedPermissionIds | json }}</code></pre>
+      </div>
+    </div>
+
   </div>
 </div>

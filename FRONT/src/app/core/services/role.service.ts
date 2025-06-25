@@ -1,37 +1,35 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
-import { catchError, Observable, throwError } from 'rxjs';
+import { catchError, Observable, throwError, map } from 'rxjs'; // Import 'map' operator
 import {
   Role,
   Permission,
-  CreateRolePayload, // Crucial: Import CreateRolePayload
-  UpdateRolePayload, // Crucial: Import UpdateRolePayload
-  ApiResponse,
+  CreateRolePayload,
+  UpdateRolePayload,
+  ApiResponse, // Use the updated ApiResponse
   SuccessMessageResponse
-} from '../models/role.model';
+} from '../models/role.model'; // Correct import path
 
 import { environment } from '../../../environments/environment';
 
 @Injectable({
-  providedIn: 'root' // Este servicio será un singleton y estará disponible en toda la aplicación
+  providedIn: 'root'
 })
 export class RoleService {
-  private apiUrl = `${environment.URL_SERVICIOS}`; // Ajusta esta URL a tu endpoint de roles en Laravel
-  private rolesEndpoint = `${this.apiUrl}/roles`; // Specific endpoint for roles
-  private permissionsEndpoint = `${this.apiUrl}/permissions`; // Ajusta esta URL a tu endpoint de roles en Laravel
+  private apiUrl = `${environment.URL_SERVICIOS}`;
+  private rolesEndpoint = `${this.apiUrl}/roles`;
+  private permissionsEndpoint = `${this.apiUrl}/permissions`;
 
   constructor(private http: HttpClient) {}
 
   private getAuthHeaders(): HttpHeaders {
-    // Removed direct 'Authorization' header as it should be handled by authInterceptor
     return new HttpHeaders({
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      // The authInterceptor will add 'Authorization: Bearer <token>' if needed
     });
   }
 
-    private handleError(error: HttpErrorResponse) {
+  private handleError(error: HttpErrorResponse) {
     let errorMessage = 'An unknown error occurred!';
     if (error.error instanceof ErrorEvent) {
       errorMessage = `Error: ${error.error.message}`;
@@ -40,7 +38,7 @@ export class RoleService {
         `Backend returned code ${error.status}, ` +
         `body was: ${JSON.stringify(error.error)}`);
       errorMessage = `Error ${error.status}: ${error.error?.message || error.statusText}`;
-      if (error.status === 422 && error.error.errors) {
+      if (error.error?.errors) {
         const validationErrors = Object.values(error.error.errors)
           .flat()
           .join('; ');
@@ -50,29 +48,36 @@ export class RoleService {
     return throwError(() => new Error(errorMessage));
   }
 
+  // getRoles now returns ApiResponse<Role[]> where ApiResponse has pagination data directly
   getRoles(page: number = 1, perPage: number = 10): Observable<ApiResponse<Role[]>> {
+    // Expecting the full ApiResponse structure that contains PaginationData<Role[]>
     return this.http.get<ApiResponse<Role[]>>(`${this.rolesEndpoint}?page=${page}&per_page=${perPage}`, { headers: this.getAuthHeaders() })
       .pipe(
         catchError(this.handleError)
       );
   }
 
+  // getRole for a single role
   getRole(id: number): Observable<Role> {
+    // Assuming this endpoint returns a single Role object directly, NOT wrapped in ApiResponse
     return this.http.get<Role>(`${this.rolesEndpoint}/${id}`, { headers: this.getAuthHeaders() })
       .pipe(
         catchError(this.handleError)
       );
   }
+
+  // getPermissions now returns ApiResponse<Permission[]> where ApiResponse has pagination data directly
+  // This method's return type matches the ApiResponse interface now that it directly includes pagination
   getPermissions(): Observable<ApiResponse<Permission[]>> {
+    // Expecting the full ApiResponse structure that contains PaginationData<Permission[]>
     return this.http.get<ApiResponse<Permission[]>>(`${this.permissionsEndpoint}`, { headers: this.getAuthHeaders() })
       .pipe(
         catchError(this.handleError)
       );
   }
+
   /**
    * Crea un nuevo rol.
-   * @param role Los datos del nuevo rol.
-   * @returns Un Observable que emite el rol creado.
    */
   createRole(payload: CreateRolePayload): Observable<SuccessMessageResponse> {
     return this.http.post<SuccessMessageResponse>(this.rolesEndpoint, payload, { headers: this.getAuthHeaders() })
@@ -83,9 +88,6 @@ export class RoleService {
 
   /**
    * Actualiza un rol existente.
-   * @param id El ID del rol a actualizar.
-   * @param role Los datos actualizados del rol.
-   * @returns Un Observable que emite el rol actualizado.
    */
   updateRole(id: number, payload: UpdateRolePayload): Observable<SuccessMessageResponse> {
     return this.http.put<SuccessMessageResponse>(`${this.rolesEndpoint}/${id}`, payload, { headers: this.getAuthHeaders() })
@@ -96,8 +98,6 @@ export class RoleService {
 
   /**
    * Elimina un rol.
-   * @param id El ID del rol a eliminar.
-   * @returns Un Observable que emite la respuesta de la eliminación.
    */
   deleteRole(id: number): Observable<SuccessMessageResponse> {
     return this.http.delete<SuccessMessageResponse>(`${this.rolesEndpoint}/${id}`, { headers: this.getAuthHeaders() })
@@ -105,5 +105,4 @@ export class RoleService {
         catchError(this.handleError)
       );
   }
-  
 }

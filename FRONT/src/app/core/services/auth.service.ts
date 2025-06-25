@@ -69,10 +69,10 @@ export class AuthService {
       }),
       catchError(error => {
         console.error('AuthService - Error in login flow:', error);
-        // Limpiar cualquier estado de autenticación parcial en caso de error.
-        localStorage.removeItem('user');
+        
+        localStorage.removeItem('user');         // Limpiar cualquier estado de autenticación parcial en caso de error.
         localStorage.removeItem('access_token');
-        return throwError(() => error); // Propaga el error
+        return throwError(() => error);         // Propaga el error
       })
     );
   }
@@ -114,9 +114,14 @@ export class AuthService {
    */
   getCurrentUser(): AuthUser | null {
     const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    try {
+      return user ? JSON.parse(user) : null;
+    } catch (e) {
+      console.error("Error parsing user from localStorage:", e);
+      localStorage.removeItem('user');
+      return null;
+    }
   }
-
   /**
    * Recupera el token de acceso (Bearer Token) del localStorage.
    * Este método es crucial para que el interceptor pueda adjuntar el token a las solicitudes.
@@ -136,7 +141,6 @@ export class AuthService {
   }
   hasPermission(permissionToCheck: string): boolean {
     const user = this.getCurrentUser();
-    console.log(`[AuthService] hasPermission('${permissionToCheck}'): Intentando verificar permiso.`);
     console.log('[AuthService] Usuario actual:', user);
 
     // Si el usuario no está logueado o no tiene la propiedad 'permissions' o está vacía,

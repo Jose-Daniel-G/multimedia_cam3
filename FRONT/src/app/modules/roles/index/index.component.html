@@ -1,12 +1,20 @@
 <div class="container-fluid">
   <app-message [successMessage]="successMessage" [errorMessage]="errorMessage"></app-message>
 
+  <!-- Confirmation Modal -->
+<app-confirmation-modal
+  [show]="(modalService.confirmation$ | async)?.show ?? false"
+  [message]="(modalService.confirmation$ | async)?.message ?? ''"
+  (confirm)="modalService.onConfirm()"
+  (cancel)="modalService.onCancel()"
+></app-confirmation-modal>
+
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Lista de Roles</h5>
       <!-- Solo mostrar el botón "Crear nuevo rol" si el usuario tiene permiso -->
       <a *ngIf="checkPermission('roles.create')" class="btn btn-sm btn-primary"
-        [routerLink]="['/roles/create']">Crear nuevo rol</a>
+        [routerLink]="['/dashboard/roles/create']">Crear nuevo rol</a>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -21,13 +29,15 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let role of roles">
+            <!-- Iterate over roles. Use '|| []' to ensure it's always iterable -->
+            <tr *ngFor="let role of roles || []">
               <td>{{ role.id }}</td>
               <td>{{ role.name }}</td>
               <td>
                 <ng-container *ngIf="role.permissions && role.permissions.length > 0">
                   <ul>
-                    <li *ngFor="let permission of role.permissions">
+                    <!-- Iterate over permissions. Use '|| []' for safety -->
+                    <li *ngFor="let permission of role.permissions || []">
                       {{ permission.name }}
                     </li>
                   </ul>
@@ -38,16 +48,16 @@
               </td>
               <td>{{ role.created_at | date: 'dd MMM, y' }}</td>
               <td class="text-center">
-                <!-- Solo mostrar el botón "Editar" si el usuario tiene permiso -->
+                <!-- Only show "Editar" button if user has permission -->
                 <a *ngIf="checkPermission('roles.edit')" class="btn btn-sm btn-outline-dark me-2"
-                  [routerLink]="['/roles', role.id, 'edit']">Editar</a>
-                <!-- Solo mostrar el botón "Eliminar" si el usuario tiene permiso -->
+                  [routerLink]="['/dashboard/roles', role.id, 'edit']">Editar</a>
+                <!-- Only show "Eliminar" button if user has permission -->
                 <button *ngIf="checkPermission('roles.destroy')" class="btn btn-sm btn-danger"
-                  (click)="deleteRole(role.id)">Eliminar</button>
+                  (click)="confirmDeleteRole(role.id)">Eliminar</button>
               </td>
             </tr>
-            <tr *ngIf="roles.length === 0">
-              <!-- Colspan ajustado a 4 columnas: #, Nombre, Guard Name, Creación, Acción -->
+            <!-- Show "No roles registered" message if 'roles' array is empty or null/undefined -->
+            <tr *ngIf="!roles || roles.length === 0">
               <td colspan="5" class="text-center">No hay roles registrados.</td>
             </tr>
           </tbody>
@@ -58,7 +68,7 @@
       <app-pagination [totalItems]="totalItems" [currentPage]="currentPage" [itemsPerPage]="itemsPerPage"
         (pageChange)="onPageChange($event)"></app-pagination>
     </div>
-    <pre>{{ roles | json }}</pre>
-
+    <!-- Optional: Uncomment this to debug the structure of roles if necessary -->
+    <!-- <pre>{{ roles | json }}</pre> -->
   </div>
 </div>

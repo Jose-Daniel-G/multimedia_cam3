@@ -10,11 +10,12 @@ import { RouterModule } from '@angular/router'; // Si tus componentes compartido
 // Basado en tu error anterior, PaginationComponent podría ser standalone.
 import { PaginationComponent } from './components/pagination/pagination.component'; // Asegúrate de la ruta correcta
 import { MessageComponent } from './components/message/message.component';
+import { ConfirmationModalComponent } from './components/confirmation-modal/confirmation-modal.component';
 
 @NgModule({
   // Si los componentes son STANDALONE, NO los declares aquí.
   // Déjalo vacío si todos los elementos que quieres compartir son Standalone.
-  declarations: [],
+  declarations: [ConfirmationModalComponent],
   imports: [
     CommonModule, // Siempre necesario para los módulos
     FormsModule,
@@ -29,7 +30,8 @@ import { MessageComponent } from './components/message/message.component';
     ReactiveFormsModule,
     RouterModule,
     PaginationComponent, // Exporta el componente para que otros módulos puedan usar <app-pagination>
-    MessageComponent
+    MessageComponent,
+    ConfirmationModalComponent
   ],
 })
 export class SharedModule {}
