@@ -1,18 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, switchMap, tap, catchError, throwError } from 'rxjs'; // Asegúrate de importar todos estos operadores
-import { LoginRequest, AuthUser } from '../models/login.model'; // Asumo AuthUser para el tipo de usuario devuelto
+import { LoginRequest, AuthUser, UsuarioLoginResponse } from '../models/login.model'; // Asumo AuthUser para el tipo de usuario devuelto
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private baseUrl = environment.URL_SERVICIOS; // Ejemplo: http://127.0.0.1:8000/api
-
-  // La URL para obtener la cookie CSRF de Sanctum.
-  // Es importante que esta URL NO incluya '/api' si tu Laravel está configurado para servir
-  // 'sanctum/csrf-cookie' directamente desde la raíz.
-  // Si environment.URL_SERVICIOS es "http://127.0.0.1:8000/api",
-  // .replace('/api', '') lo convierte en "http://127.0.0.1:8000".
   private csrfUrl = `${this.baseUrl.replace('/api', '')}/sanctum/csrf-cookie`;
 
   private loginUrl = `${this.baseUrl}/login`;
@@ -70,6 +64,7 @@ export class AuthService {
         return this.http.get<AuthUser>(this.userUrl, { withCredentials: true });
       }),
       tap(user => {
+        this.setCurrentUser(user); // ¡Actualiza el usuario en localStorage con todos sus permisos! JDGO
         console.log('AuthService - User data retrieved from /user endpoint:', user);
       }),
       catchError(error => {
@@ -139,10 +134,21 @@ export class AuthService {
   isAuthenticated(): boolean {
     return !!this.getCurrentUser() && !!this.getToken(); // ¡CRÍTICO! Verifica ambos.
   }
-  hasPermission(permission: string): boolean {
+  hasPermission(permissionToCheck: string): boolean {
     const user = this.getCurrentUser();
-    // Verifica si el usuario existe y si su array de permisos incluye el permiso dado.
-    // Usamos el operador de encadenamiento opcional (?) para evitar errores si 'permissions' es undefined.
-    return user?.permissions?.includes(permission) ?? false;
+    console.log(`[AuthService] hasPermission('${permissionToCheck}'): Intentando verificar permiso.`);
+    console.log('[AuthService] Usuario actual:', user);
+
+    // Si el usuario no está logueado o no tiene la propiedad 'permissions' o está vacía,
+    // entonces no tiene el permiso.
+    if (!user || !user.permissions || user.permissions.length === 0) {
+      console.log(`[AuthService] hasPermission('${permissionToCheck}'): Usuario no logueado o no tiene permisos en el objeto de usuario. Resultado: false`);
+      return false;
+    }
+
+    // Verifica directamente si el 'permissionToCheck' está incluido en el array 'user.permissions'.
+    const hasPerm = user.permissions.includes(permissionToCheck);
+    console.log(`[AuthService] hasPermission('${permissionToCheck}'): El permiso ${hasPerm ? 'FUE ENCONTRADO' : 'NO FUE ENCONTRADO'}. Resultado: ${hasPerm}`);
+    return hasPerm;
   }
 }

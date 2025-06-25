@@ -1,5 +1,7 @@
 // src/app/models/login.model.ts
 
+// import { Role } from "./role.model";
+
 /**
  * Interfaz para los datos de solicitud de login que se envían al backend.
  * Basado en tu `login.component.ts` y la autenticación estándar de Laravel.

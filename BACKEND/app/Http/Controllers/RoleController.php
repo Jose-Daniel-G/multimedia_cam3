@@ -20,7 +20,10 @@ class RoleController extends Controller
 
     public function index()
     {
-        $roles = Role::orderBy('created_at', 'ASC')->paginate(10);
+        // $roles = Role::orderBy('created_at', 'ASC')->paginate(10);
+        $roles = Role::with('permissions')
+            ->orderBy('created_at', 'ASC')
+            ->paginate(10); // Use paginate() for paginated results
         return response()->json($roles);
     }
 

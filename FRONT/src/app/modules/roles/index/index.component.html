@@ -1,4 +1,3 @@
-<!-- src/app/modules/roles/index/index.component.html -->
 <div class="container-fluid">
   <app-message [successMessage]="successMessage" [errorMessage]="errorMessage"></app-message>
 
@@ -6,7 +5,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Lista de Roles</h5>
       <!-- Solo mostrar el botón "Crear nuevo rol" si el usuario tiene permiso -->
-      <a *ngIf="checkPermission('create-roles')" class="btn btn-sm btn-primary"
+      <a *ngIf="checkPermission('roles.create')" class="btn btn-sm btn-primary"
         [routerLink]="['/dashboard/roles/create']">Crear nuevo rol</a>
     </div>
     <div class="card-body p-0">
@@ -40,10 +39,10 @@
               <td>{{ role.created_at | date: 'dd MMM, y' }}</td>
               <td class="text-center">
                 <!-- Solo mostrar el botón "Editar" si el usuario tiene permiso -->
-                <a *ngIf="checkPermission('edit-roles')" class="btn btn-sm btn-outline-dark me-2"
+                <a *ngIf="checkPermission('roles.edit')" class="btn btn-sm btn-outline-dark me-2"
                   [routerLink]="['/dashboard/roles', role.id, 'editar']">Editar</a>
                 <!-- Solo mostrar el botón "Eliminar" si el usuario tiene permiso -->
-                <button *ngIf="checkPermission('delete-roles')" class="btn btn-sm btn-danger"
+                <button *ngIf="checkPermission('roles.delete')" class="btn btn-sm btn-danger"
                   (click)="deleteRole(role.id)">Eliminar</button>
               </td>
             </tr>

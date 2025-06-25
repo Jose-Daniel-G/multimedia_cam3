@@ -64,13 +64,7 @@ export class IndexComponent implements OnInit {
       });
     }
   }
-
-  // Ensure AuthService is injected if you use this method
-  // checkPermission(permissionName: string): boolean {
-  //   // return this.authService.hasPermission(permissionName);
-  //   return true; // Placeholder if AuthService is not injected
-  // }
-
+  
   getPermissionNames(permissions: Permission[]): string {
     return permissions.map((p) => p.name).join(', ');
   }
@@ -85,8 +79,12 @@ export class IndexComponent implements OnInit {
   }
     // Método para verificar permisos (necesita AuthService)
   checkPermission(permissionName: string): boolean {
-    return this.authService.hasPermission(permissionName);
-  } 
+    // ESTA ES LA LÍNEA CRÍTICA: Asegúrate de que esta línea esté activa
+    const hasPerm = this.authService.hasPermission(permissionName);
+    console.log(`[IndexComponent] checkPermission('${permissionName}'): ${hasPerm}`);
+    return hasPerm;
+    // return true; // <-- Comenta o elimina esta línea que estaba forzando el 'true'
+  }
  
   updatePaginatedRoles(): void { 
     const start = (this.currentPage - 1) * this.itemsPerPage;
