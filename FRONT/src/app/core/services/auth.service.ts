@@ -37,14 +37,12 @@ export class AuthService {
       // Paso 2: Encadenar la petición POST de login. Se ejecuta solo si la petición CSRF fue exitosa.
       switchMap(() => {
         console.log('AuthService - Sending login POST request...');
-        // Esperamos que Laravel devuelva un objeto con 'message', 'user' y 'access_token'.
-        return this.http.post<{ message: string; user: AuthUser; access_token: string }>( // <--- Define la estructura de respuesta esperada
+        return this.http.post<UsuarioLoginResponse>( // <--- Esperamos que Laravel devuelva un objeto con 'message', 'user' y 'access_token'.
           this.loginUrl,
           credentials,
-          { withCredentials: true } // ¡CRÍTICO! Para enviar la cookie XSRF-TOKEN en esta petición
+          { withCredentials: true }
         );
-      }),
-      // Paso 3: Usar 'tap' para manejar la respuesta del login y guardar el token.
+      }), // Paso 3: Usar 'tap' para manejar la respuesta del login y guardar el token.
       tap(response => {
         if (response.access_token && response.user) {
           localStorage.setItem('access_token', response.access_token); // <-- ¡GUARDAR EL TOKEN DE ACCESO!
@@ -155,4 +153,5 @@ export class AuthService {
     console.log(`[AuthService] hasPermission('${permissionToCheck}'): El permiso ${hasPerm ? 'FUE ENCONTRADO' : 'NO FUE ENCONTRADO'}. Resultado: ${hasPerm}`);
     return hasPerm;
   }
+  
 }

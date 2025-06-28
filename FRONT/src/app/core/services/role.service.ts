@@ -6,8 +6,9 @@ import {
   Permission,
   CreateRolePayload,
   UpdateRolePayload,
-  ApiResponse, // Use the updated ApiResponse
-  SuccessMessageResponse
+  PaginationData, // Use the updated ApiResponse
+  SuccessMessageResponse,
+  ApiResponse
 } from '../models/role.model'; // Correct import path
 
 import { environment } from '../../../environments/environment';
@@ -49,9 +50,9 @@ export class RoleService {
   }
 
   // getRoles now returns ApiResponse<Role[]> where ApiResponse has pagination data directly
-  getRoles(page: number = 1, perPage: number = 10): Observable<ApiResponse<Role[]>> {
-    // Expecting the full ApiResponse structure that contains PaginationData<Role[]>
-    return this.http.get<ApiResponse<Role[]>>(`${this.rolesEndpoint}?page=${page}&per_page=${perPage}`, { headers: this.getAuthHeaders() })
+  getRoles(page: number = 1, perPage: number = 10): Observable<PaginationData<Role[]>> {
+    // Expecting the full PaginationData structure that contains PaginationData<Role[]>
+    return this.http.get<PaginationData<Role[]>>(`${this.rolesEndpoint}?page=${page}&per_page=${perPage}`, { headers: this.getAuthHeaders() })
       .pipe(
         catchError(this.handleError)
       );

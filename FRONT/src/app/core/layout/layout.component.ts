@@ -4,6 +4,7 @@ import { AuthService } from '../services/auth.service';
 import { AdminLteService } from '../services/admin-lte.service';
 
 import { NgIf } from '@angular/common';
+import { AuthUser } from '../models/login.model';
 
 @Component({
   selector: 'app-layout',
@@ -13,7 +14,7 @@ import { NgIf } from '@angular/common';
   styleUrl: './layout.component.css',
 })
 export class LayoutComponent {
-  user: any; // Variable para almacenar el usuario
+ user: AuthUser | null = null; // Variable para almacenar el usuario
 
   constructor(
     private authService: AuthService,
@@ -40,6 +41,15 @@ export class LayoutComponent {
   }
 
   logout() {
-    this.authService.logout();
+    this.authService.logout().subscribe({
+      next: () => {
+        // Opcional: Redirigir a la página de login después de un logout exitoso
+        // this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        console.error('Error durante el logout:', err);
+        // Manejar el error si es necesario, pero el AuthService ya limpia el localStorage
+      }
+    });
   }
 }

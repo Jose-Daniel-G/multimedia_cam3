@@ -14,7 +14,8 @@ export class CreateComponent implements OnInit {
   roleForm!: FormGroup; // Declare roleForm as a FormGroup
   permissions: Permission[] = []; // Declare permissions array to hold all available permissions
   selectedPermissionIds: number[] = []; // Declare array to hold selected permission IDs
-
+  // Variable para controlar la visibilidad del JSON de depuración
+  showDebugJson: boolean = false;
   constructor(
     private fb: FormBuilder,
     private roleService: RoleService,
@@ -43,7 +44,7 @@ export class CreateComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading permissions:', err);
-        // Aquí podrías añadir un mensaje de error para el usuario
+        this.permissions = [];
       }
     });
   }
@@ -84,7 +85,9 @@ export class CreateComponent implements OnInit {
   isPermissionSelected(permissionId: number): boolean { // Removido 'undefined' ya que `permission.id` siempre existirá
     return this.selectedPermissionIds.includes(permissionId);
   }
-
+  toggleDebugJson(): void {
+    this.showDebugJson = !this.showDebugJson;
+  }
   /**
    * Handles the form submission.
    * If the form is valid, it creates a new role with the selected permissions.

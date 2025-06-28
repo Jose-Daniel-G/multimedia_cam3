@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 
 // Importa las interfaces de tus modelos para tipado seguro
 // Asegúrate de que la ruta sea correcta y que AuthUser esté importado
-import { LoginRequest, UsuarioLoginResponse, AuthUser } from '../../../core/models/login.model'; 
+import { LoginRequest, AuthUser } from '../../../core/models/login.model'; 
 
 @Component({
   selector: 'app-login',
